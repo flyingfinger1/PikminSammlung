@@ -1,10 +1,10 @@
 """Pikmin-Herbarium web server.
 
-Serves the uploaded page behind Basic Auth and accepts uploads of the two page files
+Serves the uploaded page (optionally behind Basic Auth) and accepts uploads of the two page files
 (index.html, thumbs.jpg) with a bearer token. Standard library only.
 
 Environment:
-  VIEW_USER, VIEW_PASSWORD  login for viewing the page (required)
+  VIEW_USER, VIEW_PASSWORD  optional login for viewing; unset = page is public
   UPLOAD_TOKEN              secret for PUT /api/files/<name> (required, >= 24 chars)
   DATA_DIR                  where the page files live (default /data)
   PORT                      listen port (default 8080)
@@ -40,11 +40,14 @@ PLACEHOLDER = """<!doctype html><html lang="de"><meta charset="utf-8">
 <strong>Veröffentlichen</strong> wählen.</p></body></html>""".encode("utf-8")
 
 
+PUBLIC = not (VIEW_USER or VIEW_PASSWORD)
+
+
 def check_config():
-    missing = [k for k, v in (("VIEW_USER", VIEW_USER), ("VIEW_PASSWORD", VIEW_PASSWORD),
-                              ("UPLOAD_TOKEN", UPLOAD_TOKEN)) if not v]
-    if missing:
-        sys.exit("Fehlende Umgebungsvariablen: " + ", ".join(missing))
+    if not UPLOAD_TOKEN:
+        sys.exit("Fehlende Umgebungsvariable: UPLOAD_TOKEN")
+    if bool(VIEW_USER) != bool(VIEW_PASSWORD):
+        sys.exit("VIEW_USER und VIEW_PASSWORD nur zusammen setzen (oder beide weglassen = öffentlich).")
     if len(UPLOAD_TOKEN) < 24:
         sys.exit("UPLOAD_TOKEN ist zu kurz (mindestens 24 Zeichen).")
 
@@ -71,6 +74,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def viewer_ok(self):
+        if PUBLIC:
+            return True
         header = self.headers.get("Authorization", "")
         if not header.startswith("Basic "):
             return False
@@ -148,7 +153,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     check_config()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Pikmin-Herbarium läuft auf Port {PORT}, Daten in {DATA_DIR}", flush=True)
+    access = "öffentlich" if PUBLIC else "mit Login"
+    print(f"Pikmin-Herbarium läuft auf Port {PORT} ({access}), Daten in {DATA_DIR}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

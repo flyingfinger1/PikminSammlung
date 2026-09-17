@@ -2,7 +2,7 @@ services:
   pikmin-sammlung:
     image: ghcr.io/flyingfinger1/pikminsammlung:latest
     restart: unless-stopped
-    env_file: .env   # VIEW_USER, VIEW_PASSWORD, UPLOAD_TOKEN - see .env.example
+    env_file: .env   # UPLOAD_TOKEN (+ optional VIEW_USER/VIEW_PASSWORD) - see .env.example
     volumes:
       - pikmin-data:/data
     ports:

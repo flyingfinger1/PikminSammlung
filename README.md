@@ -3,7 +3,7 @@
 Übersicht über alle eigenen Pikmin aus **Pikmin Bloom**: Porträt, Deko, Freundschaft, Schritte,
 Fundort und eine Deko-Matrix mit Kandidaten. Die Daten werden per **ADB** direkt vom Handy
 gescannt, per Texterkennung (Windows OCR) ausgewertet und als statische Seite gebaut, die auf
-einem eigenen Server hinter Passwort läuft.
+einem eigenen Server läuft (öffentlich, Upload per Token geschützt).
 
 ## Bedienung
 
@@ -40,7 +40,8 @@ sie enthalten, wo die Pikmin gefunden wurden.
 Kleiner Python-Server (`server/app.py`, nur Standardbibliothek) im Docker-Image
 `ghcr.io/flyingfinger1/pikminsammlung`:
 
-- `GET /` – Seite, geschützt per Basic Auth (`VIEW_USER` / `VIEW_PASSWORD`)
+- `GET /` – Seite; öffentlich, außer `VIEW_USER` + `VIEW_PASSWORD` sind gesetzt (dann Basic Auth).
+  Antwortet mit `X-Robots-Tag: noindex`, damit Suchmaschinen die Seite nicht aufnehmen
 - `PUT /api/files/index.html|thumbs.jpg` – Upload mit `Authorization: Bearer <UPLOAD_TOKEN>`;
   atomar geschrieben, vorherige Version bleibt als `<name>.prev` im Volume
 - `GET /health` – ohne Login, für den Healthcheck
