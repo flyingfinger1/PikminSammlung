@@ -168,6 +168,10 @@ h1 {
 .matrix thead th { position: sticky; top: 0; background: var(--surface); padding: 12px 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .matrix thead th .dot { margin: 0 auto 5px; width: 14px; height: 14px; }
 .matrix tbody th { text-align: left; padding: 8px 14px; font-weight: 600; white-space: nowrap; }
+.matrix tbody tr.cat th {
+  padding: 16px 14px 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); background: var(--surface-2); border-bottom: 1px solid var(--line);
+}
 .matrix tbody th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
 .matrix td button {
   width: 100%; min-height: 42px; border: 0; background: none; cursor: pointer; font-weight: 600;
@@ -235,7 +239,7 @@ h1 {
     <section id="view-grid"><div class="grid" id="grid"></div></section>
     <section id="view-matrix" hidden>
       <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
-      <p class="matrix-note">Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
+      <p class="matrix-note">Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
     </section>
   </main>
 </div>
@@ -400,13 +404,20 @@ function matrix() {
   const names = new Set([...decor.map(p => p.decor), ...P.filter(p => !p.decor && p.spotDecor).map(p => p.spotDecor), ...RARE_UNLOCKED]);
   const rows = [...names].map(k => {
     const list = decor.filter(p => p.decor === k);
-    const spot = (list[0] || P.find(p => p.spotDecor === k || p.decor === baseOf(k))).spot;
+    const spot = (list[0] || P.find(p => p.spotDecor === k || (baseOf(k) && p.decor === baseOf(k)))).spot;
     const open = COLORS.filter(([n]) => !(n === "Eis" && noEis(k)) && !list.some(p => p.color === n)
         && !((m => m.length && m.every(x => decor.some(p => p.decor === x && p.color === n)))(
           [...new Set(decor.filter(p => p.motif && p.decor.startsWith(k + " · ")).map(p => p.decor))])))
       .filter(([n]) => candidates(k, n).length).length;
     return { k, list, spot, open };
-  }).sort((a, b) => b.list.length - a.list.length || b.open - a.open || a.k.localeCompare(b.k, "de"));
+  });
+  // order of the in-game decor collection: places as listed there, sets within a place in the
+  // order of the decor-sorted Pikmin list, rare sets before the normal ones
+  const ORDER = DATA.order || { spots: [], sets: [] };
+  const spotRank = s => { const i = ORDER.spots.indexOf(s); return i < 0 ? 900 : i; };
+  const setRank = k => { const base = baseOf(k); const i = ORDER.sets.indexOf(base || k); return (i < 0 ? 500 : i) - (base ? 1000 : 0); };
+  rows.sort((a, b) => spotRank(a.spot) - spotRank(b.spot) || a.spot.localeCompare(b.spot, "de")
+    || setRank(a.k) - setRank(b.k) || a.k.localeCompare(b.k, "de"));
   const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">Deko</th>` +
     COLORS.map(([n]) => `<th scope="col"><span class="dot" style="--c:${cvar[n]}"></span>${n}</th>`).join("") +
     `<th scope="col">Σ</th><th scope="col" title="Fehlende Farben, für die schon ein passendes Pikmin da ist">Kandidaten</th></tr></thead>`;
@@ -414,7 +425,8 @@ function matrix() {
   // Pikmin is unknown), so a colour counts as done when every motif already has it
   const motifRows = k => rows.filter(r => r.list.length && r.list[0].motif && r.k.startsWith(k + " · "));
   const allMotifsHave = (k, n) => { const m = motifRows(k); return m.length && m.every(r => r.list.some(p => p.color === n)); };
-  const body = rows.map(({ k, list, spot, open }) => {
+  const body = rows.map(({ k, list, spot, open }, i) => {
+    const place = i === 0 || rows[i - 1].spot !== spot ? `<tr class="cat"><th colspan="11" scope="rowgroup">${esc(spot)}</th></tr>` : "";
     const slots = noEis(k) ? 7 : 8;
     const split = motifRows(k).length > 0;
     const cells = COLORS.map(([n]) => {
@@ -428,10 +440,8 @@ function matrix() {
         : `<td><button class="none" disabled aria-label="${esc(k)} ${n}: keins">·</button></td>`;
     }).join("");
     const have = COLORS.filter(([n]) => list.some(p => p.color === n)).length;
-    const sub = split
-      ? `${esc(spot)} · Kandidaten, Motiv noch offen`
-      : `${esc(spot)} · ${have} von ${slots} Farben`;
-    return `<tr><th scope="row">${esc(k)}<small>${sub}</small></th>${cells}` +
+    const sub = split ? "Kandidaten, Motiv noch offen" : `${have} von ${slots} Farben`;
+    return place + `<tr><th scope="row">${esc(k)}<small>${sub}</small></th>${cells}` +
       `<td class="total">${list.length}</td><td class="total${open ? " open" : ""}">${open || "–"}</td></tr>`;
   }).join("");
   $("matrix").innerHTML = head + `<tbody>${body}</tbody>`;

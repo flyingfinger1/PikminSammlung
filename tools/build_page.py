@@ -25,6 +25,41 @@ DECOR_NAME = re.compile(r"^(.+?)-Pikmin \(([^)]+)\)")
 PLAIN_NAME = re.compile(r"^(Rotes|Gelbes|Blaues|Lila|Weißes|Fels|Flügel|Eis)[ -]Pikmin")
 
 
+# places in the order of the in-game decor collection (video 2026-09-14), special decor last
+CATEGORY_ORDER = [
+    "Restaurant", "Café", "Süßwarenladen", "Kino", "Apotheke", "Zoo", "Wald", "Am Wasser", "Post",
+    "Kunstmuseum", "Flughafen", "Bahnhof", "Strand", "Burger-Bistro", "Eckladen", "Supermarkt",
+    "Bäckerei", "Friseur", "Boutique", "Park", "Bibliothek/Bücherladen", "Straße", "Sushi-Restaurant",
+    "Berg", "Stadion", "Regentag", "Schneetag", "Themenpark", "Bushaltestelle",
+    "Italienisches Restaurant", "Ramen-Restaurant", "Brücke", "Hotel", "Kosmetik-Laden",
+    "Schreine und Tempel", "Elektroladen", "Curry-Restaurant", "Baumarkt", "Universität & College",
+    "Mexikanisches Restaurant", "Waschsalons & Reinigungen", "Koreanisches Restaurant",
+    "Schreibwarenladen", "Extra",
+]
+
+
+def set_order():
+    """Sets within a place in the order of the latest scan: the in-game list sorted by decor
+    follows the collection (e.g. Hirschkäfer before Eichelhut, Sticker grün/blau/gelb, Münze)."""
+    scans = sorted(p for p in (ROOT / "captures").glob("20*/parsed.tsv") if "_test" not in p.parent.name)
+    if not scans:
+        return []
+    with scans[-1].open(encoding="utf-8") as f:
+        cards = sorted(csv.DictReader(f, delimiter="\t"), key=lambda r: int(r["n"]))
+    order = []
+    for r in cards:
+        variant = int(r["variant"]) if r.get("variant") else None
+        if r["decor"]:
+            name = r["decor"]
+            if variant and name in MOTIF_NAMES:
+                name = f"{name} · {MOTIF_NAMES[name].get(variant, f'Motiv {variant}')}"
+        else:
+            name = PLAIN_SET_DECOR.get((r["spot"], r["spot_decor"]), {}).get(variant) or r["spot_decor"]
+        if name and name not in order:
+            order.append(name)
+    return order
+
+
 def parse(row):
     name = row["name"]
     m = DECOR_NAME.match(name)
@@ -82,7 +117,8 @@ def main():
     meta = {"cols": SPRITE_COLS, "w": sprite.width // SPRITE_COLS,
             "h": sprite.height // sprite_rows, "rows": sprite_rows,
             "missing": 0}
-    payload = json.dumps({"pikmin": rows, "sprite": meta}, ensure_ascii=False)
+    order = {"spots": CATEGORY_ORDER, "sets": set_order()}
+    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order}, ensure_ascii=False)
     template = (ROOT / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")
