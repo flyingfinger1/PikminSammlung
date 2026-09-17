@@ -21,12 +21,17 @@ import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
-PORT = int(os.environ.get("PORT", "8080"))
-VIEW_USER = os.environ.get("VIEW_USER", "")
-VIEW_PASSWORD = os.environ.get("VIEW_PASSWORD", "")
-UPLOAD_TOKEN = os.environ.get("UPLOAD_TOKEN", "")
-MAX_BYTES = int(float(os.environ.get("MAX_UPLOAD_MB", "20")) * 1024 * 1024)
+def env(name, default=""):
+    # tolerate .env files edited on Windows (\r) or with quoted values
+    return os.environ.get(name, default).strip().strip("'\"").strip()
+
+
+DATA_DIR = Path(env("DATA_DIR", "/data"))
+PORT = int(env("PORT", "8080"))
+VIEW_USER = env("VIEW_USER")
+VIEW_PASSWORD = env("VIEW_PASSWORD")
+UPLOAD_TOKEN = env("UPLOAD_TOKEN")
+MAX_BYTES = int(float(env("MAX_UPLOAD_MB", "20")) * 1024 * 1024)
 
 FILES = {"index.html": "text/html; charset=utf-8", "thumbs.jpg": "image/jpeg"}
 ROUTES = {"/": "index.html", "/index.html": "index.html", "/thumbs.jpg": "thumbs.jpg"}
