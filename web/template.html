@@ -168,6 +168,16 @@ h1 {
 .matrix thead th { position: sticky; top: 0; background: var(--surface); padding: 12px 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .matrix thead th .dot { margin: 0 auto 5px; width: 14px; height: 14px; }
 .matrix tbody th { text-align: left; padding: 8px 14px; font-weight: 600; white-space: nowrap; }
+.rare-badge {
+  display: inline-block; margin-left: 7px; font-size: 11px; font-weight: 700; line-height: 16px;
+  padding: 0 6px; border-radius: 999px; vertical-align: 2px; letter-spacing: .02em;
+}
+.rare-badge.rare { background: color-mix(in srgb, var(--gold) 30%, var(--surface)); color: var(--ink); }
+.rare-badge.has { color: var(--gold); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 65%, var(--surface)); }
+.matrix tbody tr.rare th[scope="row"] { box-shadow: inset 4px 0 0 var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--surface)); }
+.matrix tbody tr.has-rare th[scope="row"] { box-shadow: inset 4px 0 0 color-mix(in srgb, var(--gold) 45%, var(--surface)); }
+.matrix-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 2px 0; font-size: 13px; color: var(--muted); list-style: none; padding: 0; }
+.matrix-legend li { display: flex; align-items: center; gap: 4px; }
 .matrix tbody tr.cat th {
   padding: 16px 14px 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
   color: var(--accent); background: var(--surface-2); border-bottom: 1px solid var(--line);
@@ -239,6 +249,11 @@ h1 {
     <section id="view-grid"><div class="grid" id="grid"></div></section>
     <section id="view-matrix" hidden>
       <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+      <ul class="matrix-legend">
+        <li><span class="rare-badge rare">✦ selten</span> seltene Deko</li>
+        <li><span class="rare-badge has">✦</span> zu dieser Deko gibt es eine seltene Variante</li>
+        <li>ohne Zeichen: keine seltene Variante (laut Pikmin-Wiki)</li>
+      </ul>
       <p class="matrix-note">Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
     </section>
   </main>
@@ -251,9 +266,15 @@ const COLORS = [
   ["Rot", "--c-rot"], ["Gelb", "--c-gelb"], ["Blau", "--c-blau"], ["Lila", "--c-lila"],
   ["Weiß", "--c-weiss"], ["Fels", "--c-fels"], ["Flügel", "--c-fluegel"], ["Eis", "--c-eis"]
 ];
-// older decor sets have 7 slots in the in-game collection: no Ice Pikmin variant
+// available colours per decor (collection video + pikminwiki.com/Decor_Pikmin, Sep 2026)
+// older decor sets have 7 slots: no Ice Pikmin variant
 const NO_EIS = new Set(["Köder", "Schere", "Papierbus", "Spielflugzeug", "Burger", "Banane",
-  "Berg-Anstecknadel", "Brücke-Anstecknadel", "Haargummi", "Herbststicker"]);
+  "Berg-Anstecknadel", "Brücke-Anstecknadel", "Haargummi", "Herbststicker", "Popcorn", "Buch",
+  "Sushi", "Pizza", "Pasta", "Hotel-Annehmlichkeiten", "Kosmetik", "Curry-Schale", "Werkzeug", "Papierzug"]);
+// rare variants that exist without Ice although the normal decor has it
+const RARE_NO_EIS = new Set(["Kaffeetasse", "Köder", "Baguette", "Schere"]);
+// decor available only in a few colours
+const ONLY_COLORS = { "Uni-Wappen Aufnäher": ["Rot", "Gelb", "Blau"] };
 const cvar = Object.fromEntries(COLORS.map(([n, v]) => [n, `var(${v})`]));
 const $ = id => document.getElementById(id);
 const fmt = n => n.toLocaleString("de-DE");
@@ -393,9 +414,24 @@ function filtered() {
 // rare decor only ever upgrades an existing Pikmin carrying the base decor
 const RARE = " (Selten)";
 const baseOf = k => k.endsWith(RARE) ? k.slice(0, -RARE.length) : null;
-const noEis = k => NO_EIS.has(baseOf(k) || k);
+const noEis = k => baseOf(k) ? NO_EIS.has(baseOf(k)) || RARE_NO_EIS.has(baseOf(k)) : NO_EIS.has(k);
+// false = this colour does not exist for the decor in-game
+const available = (k, n) => {
+  const only = ONLY_COLORS[baseOf(k) || k.split(" · ")[0]];
+  return only ? only.includes(n) : !(n === "Eis" && noEis(k));
+};
 // rare sets whose slots are unlocked in-game even without a find yet
 const RARE_UNLOCKED = ["Eichelhut (Selten)", "Hirschkäfer (Selten)"];
+// normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026). German names still
+// unknown and therefore missing: Toothbrush (Apotheke), Ball Keychain (Stadion)
+const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Hirschkäfer", "Eichelhut", "Köder", "Ticket",
+  "Banane", "Baguette", "Schere", "Vierblättriger Klee", "Münze"]);
+function rareBadge(k, names) {
+  if (baseOf(k)) return { cls: "rare", html: `<span class="rare-badge rare" title="Seltene Deko">✦ selten</span>` };
+  if (RARE_EXISTS.has(k) || names.has(k + RARE))
+    return { cls: "has-rare", html: `<span class="rare-badge has" title="Zu dieser Deko gibt es eine seltene Variante">✦</span>` };
+  return { cls: "", html: "" };
+}
 const candidates = (k, n) => baseOf(k)
   ? P.filter(p => p.decor === baseOf(k) && p.color === n)
   : P.filter(p => !p.decor && p.spotDecor === k && p.color === n);
@@ -405,7 +441,7 @@ function matrix() {
   const rows = [...names].map(k => {
     const list = decor.filter(p => p.decor === k);
     const spot = (list[0] || P.find(p => p.spotDecor === k || (baseOf(k) && p.decor === baseOf(k)))).spot;
-    const open = COLORS.filter(([n]) => !(n === "Eis" && noEis(k)) && !list.some(p => p.color === n)
+    const open = COLORS.filter(([n]) => available(k, n) && !list.some(p => p.color === n)
         && !((m => m.length && m.every(x => decor.some(p => p.decor === x && p.color === n)))(
           [...new Set(decor.filter(p => p.motif && p.decor.startsWith(k + " · ")).map(p => p.decor))])))
       .filter(([n]) => candidates(k, n).length).length;
@@ -427,10 +463,10 @@ function matrix() {
   const allMotifsHave = (k, n) => { const m = motifRows(k); return m.length && m.every(r => r.list.some(p => p.color === n)); };
   const body = rows.map(({ k, list, spot, open }, i) => {
     const place = i === 0 || rows[i - 1].spot !== spot ? `<tr class="cat"><th colspan="11" scope="rowgroup">${esc(spot)}</th></tr>` : "";
-    const slots = noEis(k) ? 7 : 8;
+    const slots = COLORS.filter(([n]) => available(k, n)).length;
     const split = motifRows(k).length > 0;
     const cells = COLORS.map(([n]) => {
-      if (n === "Eis" && noEis(k)) return `<td><span class="na" title="Gibt es im Spiel nicht">–</span></td>`;
+      if (!available(k, n)) return `<td><span class="na" title="Gibt es im Spiel nicht">–</span></td>`;
       if (split && allMotifsHave(k, n)) return `<td><span class="na" title="Alle Motive haben diese Farbe">✓</span></td>`;
       const c = list.filter(p => p.color === n).length;
       if (c) return `<td><button class="has" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" aria-label="${esc(k)} ${n}: ${c}">${c}</button></td>`;
@@ -441,7 +477,8 @@ function matrix() {
     }).join("");
     const have = COLORS.filter(([n]) => list.some(p => p.color === n)).length;
     const sub = split ? "Kandidaten, Motiv noch offen" : `${have} von ${slots} Farben`;
-    return place + `<tr><th scope="row">${esc(k)}<small>${sub}</small></th>${cells}` +
+    const badge = rareBadge(k, names);
+    return place + `<tr class="${badge.cls}"><th scope="row">${esc(k)}${badge.html}<small>${sub}</small></th>${cells}` +
       `<td class="total">${list.length}</td><td class="total${open ? " open" : ""}">${open || "–"}</td></tr>`;
   }).join("");
   $("matrix").innerHTML = head + `<tbody>${body}</tbody>`;
