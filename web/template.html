@@ -1,0 +1,469 @@
+<title>Pikmin-Herbarium</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --ground: #F2F5EE;
+  --surface: #FFFFFF;
+  --surface-2: #E8EEE5;
+  --ink: #1D2B21;
+  --muted: #5E6E62;
+  --line: #D6DFD3;
+  --accent: #2E8B57;
+  --accent-ink: #FFFFFF;
+  --bloom: #E8547A;
+  --gold: #E9A92B;
+  --heart-empty: #D9DDD8;
+  --wash: 0.16;
+
+  --c-rot: #E5484D;
+  --c-gelb: #F2C230;
+  --c-blau: #3E7BE0;
+  --c-lila: #8A4FD0;
+  --c-weiss: #CFC8DF;
+  --c-fels: #6B6F76;
+  --c-fluegel: #F08DB5;
+  --c-eis: #5EC6DA;
+
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #111913;
+    --surface: #1A241D;
+    --surface-2: #233027;
+    --ink: #E6EEE7;
+    --muted: #9CAFA1;
+    --line: #2E3C32;
+    --accent: #5CC98A;
+    --accent-ink: #0E1A12;
+    --bloom: #F27897;
+    --gold: #F1BC4E;
+    --heart-empty: #3A463D;
+    --wash: 0.22;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #111913;
+  --surface: #1A241D;
+  --surface-2: #233027;
+  --ink: #E6EEE7;
+  --muted: #9CAFA1;
+  --line: #2E3C32;
+  --accent: #5CC98A;
+  --accent-ink: #0E1A12;
+  --bloom: #F27897;
+  --gold: #F1BC4E;
+  --heart-empty: #3A463D;
+  --wash: 0.22;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.5 var(--body);
+  padding-inline: clamp(16px, 4vw, 48px);
+}
+.wrap { max-width: 1320px; margin-inline: auto; padding-block: 36px 64px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- masthead ---------- */
+.mast { display: grid; gap: 22px; }
+.mast-top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 32px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+h1 {
+  font-family: var(--display); font-weight: 800; letter-spacing: -.02em;
+  font-size: clamp(38px, 6vw, 68px); line-height: .95; margin: 0; text-wrap: balance;
+}
+.count { display: flex; align-items: baseline; gap: 10px; }
+.count b { font-family: var(--display); font-weight: 800; font-size: clamp(44px, 6vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
+.count span { color: var(--muted); max-width: 17ch; line-height: 1.3; }
+
+.spectrum { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: var(--surface-2); }
+.spectrum button { border: 0; padding: 0; cursor: pointer; min-width: 3px; transition: filter .15s; }
+.spectrum button:hover { filter: brightness(1.08) saturate(1.1); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 10px 36px; margin: 0; }
+.stats div { display: grid; }
+.stats dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.note strong { color: var(--bloom); font-weight: 600; }
+
+/* ---------- toolbar ---------- */
+.bar {
+  position: sticky; top: 0; z-index: 5;
+  margin: 28px calc(-1 * clamp(16px, 4vw, 48px)) 22px;
+  padding: 12px clamp(16px, 4vw, 48px);
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.bar-inner { max-width: 1320px; margin-inline: auto; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.tabs { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.tabs button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.search { flex: 1 1 200px; min-width: 0; }
+.search input, .bar select {
+  width: 100%; height: 36px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); padding: 0 12px;
+}
+.bar select { width: auto; padding-right: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px 0 8px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; font-size: 13px; font-weight: 500;
+}
+.chip[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); flex: none; }
+.fav-toggle[aria-pressed="true"] { border-color: var(--bloom); box-shadow: inset 0 0 0 1px var(--bloom); color: var(--bloom); }
+.shown { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reset { border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0 4px; }
+
+/* ---------- specimen grid ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 14px; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr;
+}
+.portrait {
+  position: relative; aspect-ratio: 160 / 134;
+  /* stays light in both themes: the white screenshot multiplies onto it */
+  background: color-mix(in srgb, var(--c) 17%, #F7F9F5);
+}
+.portrait i {
+  position: absolute; inset: 0; background-image: url("thumbs.jpg"); background-repeat: no-repeat;
+  mix-blend-mode: multiply;
+}
+.rank { position: absolute; left: 8px; top: 7px; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
+  background: var(--surface); border-radius: 6px; padding: 1px 6px; }
+.star { position: absolute; right: 8px; top: 6px; color: var(--gold); font-size: 17px; line-height: 1; }
+.body { padding: 11px 13px 13px; display: grid; gap: 8px; align-content: start; }
+.name { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.15; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--surface-2); }
+.tag.decor { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--ink); }
+.tag.plain { color: var(--muted); }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.hearts { display: inline-flex; gap: 2px; }
+.hearts svg { width: 14px; height: 14px; display: block; }
+.steps { font-weight: 600; font-variant-numeric: tabular-nums; }
+.where { font-size: 12px; color: var(--muted); line-height: 1.35; display: grid; gap: 1px; }
+.where span:first-child { overflow-wrap: anywhere; }
+.empty { padding: 48px 0; text-align: center; color: var(--muted); }
+
+/* ---------- decor matrix ---------- */
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.matrix { border-collapse: collapse; width: 100%; min-width: 720px; font-variant-numeric: tabular-nums; }
+.matrix th, .matrix td { padding: 0; text-align: center; border-bottom: 1px solid var(--line); }
+.matrix thead th { position: sticky; top: 0; background: var(--surface); padding: 12px 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.matrix thead th .dot { margin: 0 auto 5px; width: 14px; height: 14px; }
+.matrix tbody th { text-align: left; padding: 8px 14px; font-weight: 600; white-space: nowrap; }
+.matrix tbody th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.matrix td button {
+  width: 100%; min-height: 42px; border: 0; background: none; cursor: pointer; font-weight: 600;
+}
+.matrix td button.has { background: color-mix(in srgb, var(--c) 26%, var(--surface)); }
+.matrix td button.has:hover { background: color-mix(in srgb, var(--c) 42%, var(--surface)); }
+.matrix td button.none { color: var(--line); cursor: default; }
+.matrix td button.cand {
+  width: calc(100% - 10px); min-height: 32px; margin: 5px; border-radius: 8px;
+  border: 2px dashed color-mix(in srgb, var(--c) 70%, var(--ink)); color: var(--ink); font-size: 13px;
+}
+.matrix td button.cand:hover { background: color-mix(in srgb, var(--c) 18%, var(--surface)); }
+.matrix td.total.open { color: var(--accent); }
+.matrix td .na { display: block; min-height: 42px; line-height: 42px; color: var(--muted); background: var(--surface-2); }
+.matrix td.total { font-weight: 700; padding: 0 14px; color: var(--muted); }
+.matrix-note { margin: 12px 2px 0; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 600px) {
+  .shown { margin-left: 0; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .name { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="mast-top">
+      <div>
+        <p class="eyebrow">Pikmin Bloom · Stand 14. Sep 2026</p>
+        <h1>Pikmin-Herbarium</h1>
+      </div>
+      <div class="count"><b id="total">0</b><span>Pikmin erfasst, sortiert wie in der Spielliste</span></div>
+    </div>
+    <div>
+      <div class="spectrum" id="spectrum" aria-label="Verteilung nach Farbe"></div>
+      <ul class="legend" id="legend"></ul>
+    </div>
+    <dl class="stats" id="stats"></dl>
+    <p class="note" id="note"></p>
+  </header>
+
+  <nav class="bar" aria-label="Ansicht und Filter">
+    <div class="bar-inner">
+      <div class="tabs" role="tablist">
+        <button id="tab-grid" role="tab" aria-selected="true">Belege</button>
+        <button id="tab-matrix" role="tab" aria-selected="false">Deko-Matrix</button>
+      </div>
+      <label class="search"><input id="q" type="search" placeholder="Name, Ort, Deko …" aria-label="Suche"></label>
+      <select id="decor" aria-label="Deko"></select>
+      <select id="sort" aria-label="Sortierung">
+        <option value="rank">Freundschaft</option>
+        <option value="steps">Meiste Schritte</option>
+        <option value="new">Zuletzt entdeckt</option>
+        <option value="old">Zuerst entdeckt</option>
+        <option value="name">Name</option>
+      </select>
+      <button class="chip fav-toggle" id="fav" aria-pressed="false">★ Favoriten</button>
+      <div class="chips" id="colors"></div>
+      <span class="shown" id="shown"></span>
+    </div>
+  </nav>
+
+  <main>
+    <section id="view-grid"><div class="grid" id="grid"></div></section>
+    <section id="view-matrix" hidden>
+      <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+      <p class="matrix-note">Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+const P = DATA.pikmin, S = DATA.sprite;
+const COLORS = [
+  ["Rot", "--c-rot"], ["Gelb", "--c-gelb"], ["Blau", "--c-blau"], ["Lila", "--c-lila"],
+  ["Weiß", "--c-weiss"], ["Fels", "--c-fels"], ["Flügel", "--c-fluegel"], ["Eis", "--c-eis"]
+];
+// older decor sets have 7 slots in the in-game collection: no Ice Pikmin variant
+const NO_EIS = new Set(["Köder", "Schere", "Papierbus", "Spielflugzeug", "Burger", "Banane",
+  "Berg-Anstecknadel", "Brücke-Anstecknadel", "Haargummi", "Herbststicker"]);
+const cvar = Object.fromEntries(COLORS.map(([n, v]) => [n, `var(${v})`]));
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("de-DE");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" });
+const showDate = d => dateFmt.format(new Date(d + "T12:00:00"));
+
+const state = { q: "", colors: new Set(), decor: "", fav: false, sort: "rank", view: "grid" };
+
+/* ---- masthead ---- */
+function masthead() {
+  $("total").textContent = P.length;
+  const byColor = COLORS.map(([n]) => [n, P.filter(p => p.color === n).length]);
+  $("spectrum").innerHTML = byColor.filter(([, c]) => c).map(([n, c]) =>
+    `<button style="flex:${c};background:${cvar[n]}" title="${n}: ${c}" aria-label="Nur ${n} zeigen" data-color="${n}"></button>`).join("");
+  $("legend").innerHTML = byColor.map(([n, c]) =>
+    `<li><span class="dot" style="--c:${cvar[n]}"></span>${n} <b>${c}</b></li>`).join("");
+  const decor = P.filter(p => p.decor);
+  const kinds = new Set(decor.map(p => p.decor));
+  const combos = new Set(decor.map(p => p.decor + "|" + p.color));
+  const steps = P.reduce((a, p) => a + p.steps, 0);
+  const best = P.filter(p => p.gold).length;
+  $("stats").innerHTML = [
+    ["Deko-Pikmin", decor.length],
+    ["Deko-Arten", kinds.size],
+    ["Deko × Farbe", combos.size],
+    ["Mit Gold-Herz", best],
+    ["Favoriten", P.filter(p => p.fav).length],
+    ["Schritte gesamt", fmt(steps)]
+  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+  const first = P.reduce((a, p) => p.date < a ? p.date : a, P[0].date);
+  $("note").innerHTML = `Erstes Pikmin am ${showDate(first)}` +
+    (S.missing ? ` · <strong>${S.missing} Pikmin fehlt noch</strong> und wird nachgetragen.` : ` · Sammlung vollständig erfasst.`);
+  $("spectrum").addEventListener("click", e => {
+    const c = e.target.dataset.color; if (!c) return;
+    state.colors = new Set([c]); syncChips(); render();
+  });
+}
+
+/* ---- controls ---- */
+function controls() {
+  $("colors").innerHTML = COLORS.map(([n]) =>
+    `<button class="chip" aria-pressed="false" data-color="${n}"><span class="dot" style="--c:${cvar[n]}"></span>${n}</button>`).join("");
+  $("colors").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const c = b.dataset.color;
+    state.colors.has(c) ? state.colors.delete(c) : state.colors.add(c);
+    syncChips(); render();
+  });
+  const kinds = [...new Set(P.filter(p => p.decor).map(p => p.decor))].sort((a, b) => a.localeCompare(b, "de"));
+  $("decor").innerHTML = `<option value="">Alle Pikmin</option><option value="*">Nur Deko-Pikmin</option><option value="-">Ohne Deko</option>` +
+    kinds.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join("");
+  $("q").addEventListener("input", e => { state.q = e.target.value.trim().toLowerCase(); render(); });
+  $("decor").addEventListener("change", e => { state.decor = e.target.value; render(); });
+  $("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+  $("fav").addEventListener("click", () => { state.fav = !state.fav; $("fav").setAttribute("aria-pressed", state.fav); render(); });
+  $("tab-grid").addEventListener("click", () => setView("grid"));
+  $("tab-matrix").addEventListener("click", () => setView("matrix"));
+  $("shown").addEventListener("click", e => { if (e.target.classList.contains("reset")) resetFilters(); });
+}
+function syncChips() {
+  document.querySelectorAll("#colors .chip").forEach(b => b.setAttribute("aria-pressed", state.colors.has(b.dataset.color)));
+}
+function resetFilters() {
+  Object.assign(state, { q: "", decor: "", fav: false, cand: null });
+  state.colors.clear();
+  $("q").value = ""; $("decor").value = ""; $("fav").setAttribute("aria-pressed", "false");
+  syncChips(); render();
+}
+function setView(v) {
+  state.view = v;
+  $("tab-grid").setAttribute("aria-selected", v === "grid");
+  $("tab-matrix").setAttribute("aria-selected", v === "matrix");
+  $("view-grid").hidden = v !== "grid";
+  $("view-matrix").hidden = v !== "matrix";
+  render();
+}
+
+/* ---- grid ---- */
+const HEART = "M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.6 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z";
+let hid = 0;
+function hearts(p) {
+  let out = "";
+  for (let i = 0; i < 4; i++) {
+    const fill = Math.max(0, Math.min(1, p.hearts - i));
+    const col = p.gold && i === 0 ? "var(--gold)" : "var(--bloom)";
+    const id = "h" + (hid++);
+    out += `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="${24 * fill}" height="24"/></clipPath></defs>` +
+      `<path d="${HEART}" fill="var(--heart-empty)"/><path d="${HEART}" fill="${col}" clip-path="url(#${id})"/></svg>`;
+  }
+  const label = p.gold ? "4 Herzen, Gold-Fortschritt" : `${p.hearts} von 4 Herzen`;
+  return `<span class="hearts" title="${label}" aria-label="${label}">${out}</span>`;
+}
+function sprite(p) {
+  const i = p.frame - 1, col = i % S.cols, row = Math.floor(i / S.cols);
+  const x = S.cols > 1 ? (col / (S.cols - 1)) * 100 : 0;
+  const y = S.rows > 1 ? (row / (S.rows - 1)) * 100 : 0;
+  return `background-size:${S.cols * 100}% ${S.rows * 100}%;background-position:${x}% ${y}%`;
+}
+function card(p) {
+  const decorTag = p.decor
+    ? `<span class="tag decor">${esc(p.decor)}</span>`
+    : `<span class="tag plain">ohne Deko</span>`;
+  return `<article class="card">
+    <div class="portrait" style="--c:${cvar[p.color]}">
+      <i style="${sprite(p)}"></i>
+      <span class="rank">#${p.rank}</span>
+      ${p.fav ? '<span class="star" title="Favorit">★</span>' : ""}
+    </div>
+    <div class="body">
+      <h2 class="name">${esc(p.name)}</h2>
+      <div class="meta"><span class="tag"><span class="dot" style="--c:${cvar[p.color]}"></span>${p.color}</span>${decorTag}</div>
+      <div class="row">${hearts(p)}<span class="steps">${fmt(p.steps)} Schritte</span></div>
+      <div class="where"><span>${esc(p.location)}</span><span>${esc(p.spot)} · entdeckt ${showDate(p.date)}</span></div>
+    </div>
+  </article>`;
+}
+function filtered() {
+  const q = state.q;
+  let list = state.cand ? candidates(state.cand.decor, state.cand.color) : P.filter(p =>
+    (!state.colors.size || state.colors.has(p.color)) &&
+    (!state.fav || p.fav) &&
+    (state.decor === "" || (state.decor === "*" ? p.decor : state.decor === "-" ? !p.decor : p.decor === state.decor)) &&
+    (!q || [p.name, p.origin, p.location, p.decor, p.spot, p.color].join(" ").toLowerCase().includes(q)));
+  const cmp = {
+    rank: (a, b) => a.rank - b.rank,
+    steps: (a, b) => b.steps - a.steps,
+    new: (a, b) => b.date.localeCompare(a.date) || a.rank - b.rank,
+    old: (a, b) => a.date.localeCompare(b.date) || a.rank - b.rank,
+    name: (a, b) => a.name.localeCompare(b.name, "de") || a.rank - b.rank
+  }[state.sort];
+  return list.sort(cmp);
+}
+
+/* ---- matrix ---- */
+// Pikmin without decor whose discovery spot offers decor k in color n
+// rare decor only ever upgrades an existing Pikmin carrying the base decor
+const RARE = " (Selten)";
+const baseOf = k => k.endsWith(RARE) ? k.slice(0, -RARE.length) : null;
+const noEis = k => NO_EIS.has(baseOf(k) || k);
+// rare sets whose slots are unlocked in-game even without a find yet
+const RARE_UNLOCKED = ["Eichelhut (Selten)", "Hirschkäfer (Selten)"];
+const candidates = (k, n) => baseOf(k)
+  ? P.filter(p => p.decor === baseOf(k) && p.color === n)
+  : P.filter(p => !p.decor && p.spotDecor === k && p.color === n);
+function matrix() {
+  const decor = P.filter(p => p.decor);
+  const names = new Set([...decor.map(p => p.decor), ...P.filter(p => !p.decor && p.spotDecor).map(p => p.spotDecor), ...RARE_UNLOCKED]);
+  const rows = [...names].map(k => {
+    const list = decor.filter(p => p.decor === k);
+    const spot = (list[0] || P.find(p => p.spotDecor === k || p.decor === baseOf(k))).spot;
+    const open = COLORS.filter(([n]) => !(n === "Eis" && noEis(k)) && !list.some(p => p.color === n)
+        && !((m => m.length && m.every(x => decor.some(p => p.decor === x && p.color === n)))(
+          [...new Set(decor.filter(p => p.motif && p.decor.startsWith(k + " · ")).map(p => p.decor))])))
+      .filter(([n]) => candidates(k, n).length).length;
+    return { k, list, spot, open };
+  }).sort((a, b) => b.list.length - a.list.length || b.open - a.open || a.k.localeCompare(b.k, "de"));
+  const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">Deko</th>` +
+    COLORS.map(([n]) => `<th scope="col"><span class="dot" style="--c:${cvar[n]}"></span>${n}</th>`).join("") +
+    `<th scope="col">Σ</th><th scope="col" title="Fehlende Farben, für die schon ein passendes Pikmin da ist">Kandidaten</th></tr></thead>`;
+  // a decor split into motifs: its plain row only collects candidates (the motif of a future
+  // Pikmin is unknown), so a colour counts as done when every motif already has it
+  const motifRows = k => rows.filter(r => r.list.length && r.list[0].motif && r.k.startsWith(k + " · "));
+  const allMotifsHave = (k, n) => { const m = motifRows(k); return m.length && m.every(r => r.list.some(p => p.color === n)); };
+  const body = rows.map(({ k, list, spot, open }) => {
+    const slots = noEis(k) ? 7 : 8;
+    const split = motifRows(k).length > 0;
+    const cells = COLORS.map(([n]) => {
+      if (n === "Eis" && noEis(k)) return `<td><span class="na" title="Gibt es im Spiel nicht">–</span></td>`;
+      if (split && allMotifsHave(k, n)) return `<td><span class="na" title="Alle Motive haben diese Farbe">✓</span></td>`;
+      const c = list.filter(p => p.color === n).length;
+      if (c) return `<td><button class="has" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" aria-label="${esc(k)} ${n}: ${c}">${c}</button></td>`;
+      const cand = candidates(k, n).length;
+      return cand
+        ? `<td><button class="cand" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" title="${cand} Kandidat${cand > 1 ? "en" : ""} ohne Deko" aria-label="${esc(k)} ${n}: fehlt, ${cand} Kandidaten">○${cand > 1 ? cand : ""}</button></td>`
+        : `<td><button class="none" disabled aria-label="${esc(k)} ${n}: keins">·</button></td>`;
+    }).join("");
+    const have = COLORS.filter(([n]) => list.some(p => p.color === n)).length;
+    const sub = split
+      ? `${esc(spot)} · Kandidaten, Motiv noch offen`
+      : `${esc(spot)} · ${have} von ${slots} Farben`;
+    return `<tr><th scope="row">${esc(k)}<small>${sub}</small></th>${cells}` +
+      `<td class="total">${list.length}</td><td class="total${open ? " open" : ""}">${open || "–"}</td></tr>`;
+  }).join("");
+  $("matrix").innerHTML = head + `<tbody>${body}</tbody>`;
+}
+
+function render() {
+  const list = filtered();
+  const active = state.q || state.colors.size || state.decor || state.fav || state.cand;
+  const label = state.cand
+    ? `${list.length} Kandidat${list.length > 1 ? "en" : ""} für ${esc(state.cand.decor)} · ${state.cand.color}`
+    : `${list.length} von ${P.length}`;
+  $("shown").innerHTML = label + (active ? ` <button class="reset">Zurücksetzen</button>` : "");
+  if (state.view === "grid") {
+    hid = 0;
+    $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">Kein Pikmin passt zu diesen Filtern.</p>`;
+  }
+}
+
+masthead();
+controls();
+matrix();
+$("matrix").addEventListener("click", e => {
+  const b = e.target.closest("button.has, button.cand"); if (!b) return;
+  resetFilters();
+  if (b.classList.contains("cand")) {
+    state.cand = { decor: b.dataset.decor, color: b.dataset.color };
+  } else {
+    state.decor = b.dataset.decor; $("decor").value = b.dataset.decor;
+    state.colors = new Set([b.dataset.color]); syncChips();
+  }
+  setView("grid");
+  window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+});
+render();
+</script>

@@ -1,0 +1,22 @@
+services:
+  pikmin-sammlung:
+    image: ghcr.io/flyingfinger1/pikminsammlung:latest
+    restart: unless-stopped
+    env_file: .env   # VIEW_USER, VIEW_PASSWORD, UPLOAD_TOKEN - see .env.example
+    volumes:
+      - pikmin-data:/data
+    ports:
+      - "8082:8080"   # remove this when using a reverse proxy
+    networks:
+      - caddy-net
+    # Caddy reverse proxy labels (remove if not using caddy-docker-proxy)
+    labels:
+      caddy: pikmin-sammlung.flyingfinger.de
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+
+volumes:
+  pikmin-data:
+
+networks:
+  caddy-net:
+    external: true

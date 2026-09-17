@@ -1,0 +1,14 @@
+# collected data stays local (and on the server volume) - it contains where Pikmin were found
+captures/
+work/
+data/
+web/index.html
+web/thumbs.jpg
+*.bak
+
+# secrets
+publish.local.json
+server.env.local
+.env
+
+__pycache__/
