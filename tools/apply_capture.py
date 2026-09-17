@@ -8,6 +8,7 @@ Run diff_capture.py first and read its report. This step then:
 
 Usage: py tools/apply_capture.py captures/<run>
 """
+import argparse
 import csv
 import json
 import re
@@ -19,7 +20,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y  # noqa: E402
-from diff_capture import is_coords, load_new, load_old, match_rows, sim  # noqa: E402
+from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CROP = (0.13, 0.10, 0.87, 0.385)   # same framing as make_thumbs.py
@@ -38,9 +39,15 @@ def clean_origin(text):
 
 
 def main():
-    run = Path(sys.argv[1])
+    ap = argparse.ArgumentParser()
+    ap.add_argument("run", type=Path)
+    ap.add_argument("--remove-missing", action="store_true",
+                    help="Pikmin entfernen, die im Scan nicht mehr vorkommen (freigelassen)")
+    args = ap.parse_args()
+    run = args.run
     seen = run.name[:10]
-    new_rows, old_rows = load_new(run), load_old()
+    new_rows, _ = dedupe(load_new(run))
+    old_rows = load_old()
     match = match_rows(new_rows, old_rows)
     source = {}  # frame -> capture number (for the portrait)
 
@@ -60,7 +67,11 @@ def main():
         o["motif"] = n.get("variant", "")
         source[o["frame"]] = int(n["n"])
 
-    next_frame = max(int(o["frame"]) for o in old_rows) + 1
+    next_frame = max(int(o["frame"]) for o in old_rows) + 1  # before removal: frame numbers are never reused
+    matched_old = {j for j, _ in match.values()}
+    gone = [o for j, o in enumerate(old_rows) if j not in matched_old]
+    if gone and args.remove_missing:
+        old_rows = [o for j, o in enumerate(old_rows) if j in matched_old]
     added = []
     for i, n in enumerate(new_rows):
         if i in match:
@@ -107,6 +118,11 @@ def main():
     print(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten")
     for r in added:
         print(f"  [{r['frame']}] {r['name']} · {r['spot']} · {r['location']} · {r['date']}")
+    if gone:
+        what = "entfernt" if args.remove_missing else "nicht im Scan, bleiben erhalten"
+        print(f"{len(gone)} {what}:")
+        for o in gone:
+            print(f"  [{o['frame']}] {o['name']} · {o['location']} · {o['date']}")
 
 
 if __name__ == "__main__":

@@ -62,6 +62,23 @@ def load_new(run):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
+def dedupe(rows):
+    """One Pikmin captured twice - at the end of the list, or it changed while scanning (e.g. got
+    its decor): same colour, discovery date, spot and step count. Keep the later capture, it is
+    the current state. Step count 0 is not unique enough (fresh Pikmin), those are kept."""
+    kept, dropped, first = [], [], {}
+    for r in sorted(rows, key=lambda r: int(r["n"])):
+        steps = int(r["steps"] or 0)
+        key = (r["color"], r["date"], r["spot"], steps) if steps > 0 else None
+        if key in first:
+            kept.remove(first[key])
+            dropped.append((first[key], r))
+        if key:
+            first[key] = r
+        kept.append(r)
+    return kept, dropped
+
+
 def match_rows(new_rows, old_rows):
     """Greedy best-first assignment; returns {new index: (old index, score)}."""
     pairs = sorted(((score(n, o), i, j) for i, n in enumerate(new_rows)
@@ -76,7 +93,12 @@ def match_rows(new_rows, old_rows):
 
 def main():
     run = Path(sys.argv[1])
-    new_rows, old_rows = load_new(run), load_old()
+    new_rows, dropped = dedupe(load_new(run))
+    old_rows = load_old()
+    if dropped:
+        print(f"Doppelt im Scan ({len(dropped)}), die ältere Aufnahme wird ignoriert:")
+        for earlier, later in dropped:
+            print(f"  #{earlier['n']} {earlier['name']} = #{later['n']} {later['name']} · {later['steps']} Schritte")
     match = match_rows(new_rows, old_rows)
     used_new = set(match)
     used_old = {j for j, _ in match.values()}

@@ -152,7 +152,10 @@ def step_apply(run):
         return False
     if not ask("Bericht geprüft - ins Herbarium übernehmen? (Sicherung: data/pikmin.tsv.bak)", default=False):
         return False
-    if run_script("apply_capture.py", run) and run_script("build_page.py"):
+    remove = ask("Pikmin, die der Bericht als 'Nicht mehr gefunden' zeigt, entfernen? "
+                 "(nur wenn du sie freigelassen hast oder es Doppelte sind)", default=False)
+    extra = ["--remove-missing"] if remove else []
+    if run_script("apply_capture.py", run, *extra) and run_script("build_page.py"):
         print("\nFertig gebaut.")
         return True
     return False

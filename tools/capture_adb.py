@@ -122,6 +122,13 @@ def readable(lines, height):
     return missing
 
 
+def card_key(lines, height):
+    """Name, steps and discovery date of a card - the floating egg button over the location
+    text changes the image of an unchanged card, but not these lines."""
+    return tuple(t for y, t in lines if height * CARD_TOP < y < SCROLLED_Y
+                 and ("Pikmin" in t or "Schritte" in t or "Entdeckt" in t))
+
+
 def swipe(size):
     w, h = size
     y = int(h * SWIPE_Y)
@@ -186,6 +193,7 @@ def _run(out_dir, start_n, test=False):
     print(f"Ordner: {out_dir}", flush=True)
     log = (out_dir / "log.jsonl").open("a", encoding="utf-8")
     seen = []
+    seen_keys = {}
     base = None
     n = start_n
     last = out_dir / f"{start_n - 1:03d}.png"
@@ -206,12 +214,17 @@ def _run(out_dir, start_n, test=False):
                   f"weiter mit: py tools/capture_adb.py --resume {out_dir}")
             return
         base = sig.mean() if base is None else base
+        key = card_key(lines, img.height)
         repeat = next((i for i, s in seen if same(s, sig)), None)
+        if repeat is None and seen and key and key == seen_keys.get(seen[-1][0]):
+            repeat = seen[-1][0]  # same text; only the floating egg button changed the image
         if repeat is not None:
-            (out_dir / f"{n:03d}.png").unlink()
+            for suffix in ("", "_b"):
+                (out_dir / f"{n:03d}{suffix}.png").unlink(missing_ok=True)
             print(f"Ende: Karte #{n:03d} gleicht #{repeat:03d}. {n - start_n} Pikmin erfasst.")
             return
         seen.append((n, sig))
+        seen_keys[n] = key
         name = next((t for y, t in lines if "Pikmin" in t), "?")
         log.write(json.dumps({"n": n, "lines": lines}, ensure_ascii=False) + "\n")
         log.flush()

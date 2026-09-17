@@ -44,6 +44,7 @@ KNOWN_SPOTS = sorted({p["spot"] for p in json.loads((ROOT / "data/pikmin.json").
 
 def steps_text(t):
     t = t.replace(" ", "")
+    t = re.sub(r"^[OoD](?=Schritte)", "0", t)  # a lone 0 read as the letter O
     for _ in range(3):  # "27.1OO" -> "27.100"
         t = re.sub(r"(?<=[\d.])[OoD]", "0", t)
         t = re.sub(r"(?<=[\d.])[lI|]", "1", t)
