@@ -22,9 +22,13 @@ data is uploaded with a token, so updates need no rebuild.
 ## Requirements
 
 - **Windows 10/11** with the OCR language of your game language installed (German or English;
-  Windows OCR via PowerShell is used for text recognition) and **Python 3.12+** with the packages from `requirements.txt`
+  Windows OCR via PowerShell is used for text recognition)
+- either the **Windows app** – no Python needed: download `PikminHerbarium-<version>.zip` from the
+  [releases](https://github.com/flyingfinger1/PikminSammlung/releases), unzip it and start
+  `PikminHerbarium.exe` – or **Python 3.12+** with the packages from `requirements.txt`
   (`py -m pip install -r requirements.txt`)
-- **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`
+- **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`; if it is missing,
+  the scan offers to download Google's official package into the app folder
 - An **Android phone** with USB debugging enabled and Pikmin Bloom set to **German or English**.
   Screenshots are scaled to a width of 1080 px, so other resolutions work too; tested with
   720 × 1560, 1080 × 2340, 1080 × 2400 and 1440 × 3120. Below ~1000 px width, steps and dates are
@@ -32,7 +36,8 @@ data is uploaded with a token, so updates need no rebuild.
 
 ## Usage
 
-Double-click **`pikmin.bat`** (or run `py tools/pikmin.py`) for the interactive menu:
+Start **`PikminHerbarium.exe`**, or with Python double-click **`pikmin.bat`** (or run
+`py tools/pikmin.py`), for the interactive menu:
 
 | Option | What it does |
 |---|---|
@@ -54,7 +59,8 @@ Pikmin in a group are a separate list – append them with option 4.
 | `publish.local.json` | server URL and upload token, see `publish.example.json` |
 
 Everything you collect – `captures/`, `data/`, the built page – stays local and is ignored by git,
-because it contains where your Pikmin were found.
+because it contains where your Pikmin were found. The Windows app keeps it next to the exe; to
+update the app, replace `PikminHerbarium.exe` and `_internal/` and keep the rest.
 
 ## Pipeline (`tools/`)
 
@@ -71,6 +77,11 @@ The game language is detected from the first card of a scan. The collection keep
 names as canonical names, so scans in both languages match the same Pikmin; `tools/lang.py`
 translates English cards (places, decor, colours, dates). Decor whose German name is not known yet
 keeps its English name – add the pair to `ENGLISH["decor"]` in `tools/lang.py`.
+
+The Windows app runs the same steps as subcommands (`PikminHerbarium.exe parse captures/<run>`,
+entry point `tools/app.py`); `py packaging/build.py [version]` builds it with PyInstaller into
+`dist/`, and every GitHub release attaches the zip (`.github/workflows/release-app.yml`). The app
+is not signed, so Windows SmartScreen asks once: "More info" → "Run anyway".
 
 `extract_frames.py`, `make_sheets.py` and `make_thumbs.py` belong to the older workflow that read a
 screen recording instead of using ADB.

@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from ui import tr  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+from paths import ROOT  # noqa: E402
 CONFIG = ROOT / "publish.local.json"
 # portraits first: the new page never points at an outdated sprite
 FILES = ["thumbs.jpg", "index.html"]

@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+from paths import ROOT  # noqa: E402
 
 
 def load_old():

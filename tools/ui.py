@@ -13,7 +13,7 @@ from pathlib import Path
 
 from lang import COLOR_WORDS_DE, ENGLISH
 
-ROOT = Path(__file__).resolve().parent.parent
+from paths import ROOT  # noqa: E402
 
 
 def _pick():

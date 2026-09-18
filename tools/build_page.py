@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from lang import ENGLISH  # noqa: E402
 from ui import tr  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+from paths import RES, ROOT  # noqa: E402
 SPRITE_COLS = 20  # must match make_thumbs.py
 # in-game list order within the decor (verified on the sticker colour in the portraits)
 MOTIF_NAMES = {"Sticker": {1: "grün", 2: "blau", 3: "gelb"}}
@@ -147,7 +147,7 @@ def main():
     config = {"rareUnlocked": cfg.get("rare_unlocked", []), "language": cfg.get("language")}
     payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config,
                           "names": {"en": english_names()}}, ensure_ascii=False)
-    template = (ROOT / "web/template.html").read_text(encoding="utf-8")
+    template = (RES / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")
     print(f"{len(rows)} Pikmin -> data/pikmin.json, data/pikmin.csv, web/index.html")

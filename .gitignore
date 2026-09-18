@@ -13,3 +13,8 @@ server.env.local
 .env
 
 __pycache__/
+
+# Windows app build (packaging/build.py) and adb downloaded by the app
+build/
+dist/
+platform-tools/

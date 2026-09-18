@@ -31,7 +31,7 @@ MONTHS = {"Jan": 1, "Feb": 2, "Mär": 3, "Mar": 3, "Apr": 4, "Mai": 5, "Jun": 6,
 # "aus" after it sits next to the star and OCR mangles it ("atJS", "a:-JS", "CIUS", ...)
 BASE = re.compile(r"^(.+?-\s?Pikmin \([^)]+\)|(?:Rotes|Gelbes|Blaues|Lila|Weißes|Fels|Flügel|Eis)[ -]Pikmin)")
 STEPS = re.compile(r"(\d{1,3}(?:\.\d{3})*)Schritte")  # fullmatch on the space-free line
-ROOT = Path(__file__).resolve().parent.parent
+from paths import ROOT  # noqa: E402
 # categories from the in-game decor collection (Sep 2026) plus whatever the data already has
 _DATA = ROOT / "data/pikmin.json"
 _SEEN_SPOTS = {p["spot"] for p in json.loads(_DATA.read_text(encoding="utf-8"))} if _DATA.exists() else set()

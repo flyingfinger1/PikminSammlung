@@ -11,10 +11,13 @@ import sys
 import webbrowser
 from pathlib import Path
 
+from paths import FROZEN, ROOT
 from ui import tr
 
-ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
+# the packaged app runs each step as a subcommand of itself (tools/app.py)
+COMMANDS = {"capture_adb.py": "capture", "parse_captures.py": "parse", "diff_capture.py": "diff",
+            "apply_capture.py": "apply", "build_page.py": "build", "publish.py": "publish"}
 CAPTURES = ROOT / "captures"
 LAST = CAPTURES / ".last_run"
 ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
@@ -48,7 +51,8 @@ Check the report above:
 
 def run_script(script, *args):
     print()
-    result = subprocess.run([sys.executable, str(TOOLS / script), *map(str, args)], cwd=ROOT, env=ENV)
+    step = [COMMANDS[script]] if FROZEN else [str(TOOLS / script)]
+    result = subprocess.run([sys.executable, *step, *map(str, args)], cwd=ROOT, env=ENV)
     return result.returncode == 0
 
 

@@ -25,10 +25,10 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lang import LANGS, detect  # noqa: E402
+from paths import RES, ROOT  # noqa: E402
 from ui import name, tr  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-OCR_PS1 = ROOT / "tools" / "ocr.ps1"
+OCR_PS1 = RES / "tools" / "ocr.ps1"
 ADB_FALLBACK = (Path.home() / "AppData/Local/Microsoft/WinGet/Packages"
                 / "Google.PlatformTools_Microsoft.Winget.Source_8wekyb3d8bbwe/platform-tools/adb.exe")
 PACKAGE_HINT = "pikmin"  # substring of the foreground package name
@@ -44,14 +44,54 @@ RETRIES_SWIPE = 3
 LANG = LANGS["de"]  # game language, detected from the first card of a run
 
 
+ADB_LOCAL = ROOT / "platform-tools" / "adb.exe"  # downloaded next to the app
+ADB_ZIP = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+
+
 def adb_path():
     found = shutil.which("adb")
     if found:
         return found
-    if ADB_FALLBACK.exists():
-        return str(ADB_FALLBACK)
-    sys.exit(tr("adb nicht gefunden - Google.PlatformTools installieren",
-                "adb not found - install Google.PlatformTools"))
+    for path in (ADB_LOCAL, ADB_FALLBACK):
+        if path.exists():
+            return str(path)
+    return download_adb()
+
+
+def download_adb():
+    """Google's licence does not allow passing the Platform-Tools on, so they are not part of the
+    app: offer to fetch the official package from Google into the app folder instead."""
+    print(tr("adb (Android Platform-Tools) wurde nicht gefunden. Es wird für den Scan gebraucht.\n"
+             "Das offizielle Paket von Google (ca. 7 MB) kann jetzt nach\n"
+             f"  {ADB_LOCAL.parent}\n"
+             "geladen werden. Es gelten Googles Bedingungen:\n"
+             "  https://developer.android.com/tools/releases/platform-tools",
+             "adb (Android Platform-Tools) was not found. The scan needs it.\n"
+             "The official package from Google (about 7 MB) can be downloaded to\n"
+             f"  {ADB_LOCAL.parent}\n"
+             "now. Google's terms apply:\n"
+             "  https://developer.android.com/tools/releases/platform-tools"))
+    answer = input(tr("Jetzt herunterladen? [j/N] ", "Download now? [y/N] ")) if sys.stdin.isatty() else ""
+    if answer.strip().lower() not in ("j", "ja", "y", "yes"):
+        sys.exit(tr("Ohne adb kein Scan. Alternative: winget install Google.PlatformTools",
+                    "No scan without adb. Alternative: winget install Google.PlatformTools"))
+    import ssl
+    import urllib.request
+    import zipfile
+    try:
+        import certifi
+        context = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        context = ssl.create_default_context()
+    request = urllib.request.Request(ADB_ZIP, headers={"User-Agent": "PikminHerbarium"})
+    with urllib.request.urlopen(request, timeout=120, context=context) as response:
+        data = response.read()
+    zipfile.ZipFile(io.BytesIO(data)).extractall(ROOT)  # the zip holds a platform-tools/ folder
+    if not ADB_LOCAL.exists():
+        sys.exit(tr("Download ohne adb.exe - bitte adb selbst installieren.",
+                    "The download holds no adb.exe - please install adb yourself."))
+    print(tr(f"adb liegt jetzt in {ADB_LOCAL.parent}", f"adb is now in {ADB_LOCAL.parent}"))
+    return str(ADB_LOCAL)
 
 
 ADB = None  # resolved on first use: parsing/applying imports this module but needs no adb

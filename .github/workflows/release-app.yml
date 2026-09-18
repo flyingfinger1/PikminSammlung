@@ -1,0 +1,31 @@
+name: Build Windows app
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-app:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # attach the zip to the release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build
+        run: python packaging/build.py ${{ github.event.release.tag_name }}
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} dist/PikminHerbarium-${{ github.event.release.tag_name }}.zip --clobber

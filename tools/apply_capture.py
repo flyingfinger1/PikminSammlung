@@ -24,7 +24,7 @@ from lang import LANGS  # noqa: E402
 from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
 from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+from paths import ROOT  # noqa: E402
 CROP = (0.13, 0.10, 0.87, 0.385)   # same framing as make_thumbs.py
 REF_HEIGHT = 2340                    # captures are 1080 wide; taller screens only add height
 BUTTON_Y, BUTTON_GAP = 993, 93      # OCR top of "Zur Gruppe hinzufügen" on an unscrolled card; crop ends 93px above
@@ -124,6 +124,7 @@ def main():
         crop = img.crop((int(CROP[0] * w), top, int(CROP[2] * w), top + height))
         k = int(frame) - 1
         sheet.paste(crop.resize((THUMB_W, THUMB_H)), ((k % COLS) * THUMB_W, (k // COLS) * THUMB_H))
+    (ROOT / "web").mkdir(exist_ok=True)
     sheet.save(ROOT / "web/thumbs.jpg", quality=85)
 
     print(tr(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten",
