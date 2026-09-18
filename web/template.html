@@ -180,7 +180,7 @@ h1 {
 body[data-view="pilze"] .bar .search, body[data-view="pilze"] #decor, body[data-view="pilze"] #sort,
 body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="pilze"] #shown { display: none; }
 .pilze-intro { margin: 0 2px 14px; color: var(--muted); max-width: 70ch; }
-.pilze { min-width: 560px; }
+.pilze { min-width: 680px; }
 .pilze th[scope="row"] .dot { display: inline-block; margin-right: 8px; vertical-align: -1px; }
 .pilze td button.pow {
   width: calc(100% - 10px); margin: 5px; min-height: 40px; border: 1px solid var(--line); border-radius: 8px;
@@ -296,7 +296,7 @@ body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="p
       <div id="squad" class="squad-wrap"></div>
       <p class="matrix-note">Berechnung laut Pikmin-Wiki (Pilzkampf, Angriffsstärke seit Dez. 2022), je Pikmin:
         Grundwert der Farbe (Rot 4, Gelb 3, Blau 3, Lila 6, Weiß 2, Flügel 2, Fels 5, Eis 2)
-        + 4 für Deko-Pikmin + Kopf (nichts 0, Blatt 1, Blume 3, Saison-/Eventblume 4; die Blume des Monats gibt 5)
+        + 4 für Deko-Pikmin + Kopf (nichts 0, Blatt 1, Blume 3, Saison-/Eventblume 4, Blume des Monats 5)
         + Freundschaft (volle Herzen 0–4, volle Goldherzen 8/12/16/20) + Farbe gegen Pilz (gleiche Farbe 12, sonst 0 oder 3).
         Elementpilze greift nur eine Farbe an (+100). Event-Boni für Deko-Pikmin während Events sind nicht eingerechnet.
         Herzen und Deko: Stand des letzten Scans.</p>
@@ -592,7 +592,7 @@ controls();
 matrix();
 /* ---- Pilzkampf: pikminwiki.com/Mushroom_battle, attack power since 14 Dec 2022 ---- */
 const BASE = { Rot: 4, Gelb: 3, Blau: 3, Lila: 6, Weiß: 2, Flügel: 2, Fels: 5, Eis: 2 };
-const HEADS = [["Nichts", 0], ["Blatt", 1], ["Blume", 3], ["Saison-/Eventblume", 4]];
+const HEADS = [["Nichts", 0], ["Blatt", 1], ["Blume", 3], ["Saison-/Eventblume", 4], ["Blume des Monats", 5]];
 const MUSHROOMS = [
   ["Roter Pilz", "var(--c-rot)"], ["Gelber Pilz", "var(--c-gelb)"], ["Blauer Pilz", "var(--c-blau)"],
   ["Lila Pilz", "var(--c-lila)"], ["Weißer Pilz", "var(--c-weiss)"], ["Rosa Pilz", "var(--c-fluegel)"],
