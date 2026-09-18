@@ -25,8 +25,9 @@ data is uploaded with a token, so updates need no rebuild.
   (`py -m pip install -r requirements.txt`)
 - **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`
 - An **Android phone** with USB debugging enabled and Pikmin Bloom set to **German**.
-  Positions (swipe line, heart row, favourite star) are calibrated for a **1080 × 2340** screen;
-  other resolutions may need adjustments in `tools/capture_adb.py` and `tools/parse_captures.py`.
+  Screenshots are scaled to a width of 1080 px, so other resolutions work too; tested with
+  720 × 1560, 1080 × 2340, 1080 × 2400 and 1440 × 3120. Below ~1000 px width, steps and dates are
+  read from enlarged crops.
 
 ## Usage
 

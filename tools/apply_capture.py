@@ -24,6 +24,7 @@ from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim 
 
 ROOT = Path(__file__).resolve().parent.parent
 CROP = (0.13, 0.10, 0.87, 0.385)   # same framing as make_thumbs.py
+REF_HEIGHT = 2340                    # captures are 1080 wide; taller screens only add height
 BUTTON_Y, BUTTON_GAP = 993, 93      # OCR top of "Zur Gruppe hinzufügen" on an unscrolled card; crop ends 93px above
 THUMB_W, THUMB_H, COLS = 160, 133, 20
 FIELDS = ["frame", "name", "fav", "hearts", "steps", "spot", "decor", "location", "date", "seen", "motif",
@@ -112,10 +113,11 @@ def main():
             button_y[rec["n"]] = ys[0]
     for frame, cap in source.items():
         img = Image.open(run / f"{cap:03d}.png").convert("RGB")
-        w, h = img.size
+        w = img.width
+        height = int((CROP[3] - CROP[1]) * REF_HEIGHT)
         bottom = button_y.get(cap, BUTTON_Y) - BUTTON_GAP
-        top = max(bottom - int((CROP[3] - CROP[1]) * h), 0)
-        crop = img.crop((int(CROP[0] * w), top, int(CROP[2] * w), top + int((CROP[3] - CROP[1]) * h)))
+        top = max(bottom - height, 0)
+        crop = img.crop((int(CROP[0] * w), top, int(CROP[2] * w), top + height))
         k = int(frame) - 1
         sheet.paste(crop.resize((THUMB_W, THUMB_H)), ((k % COLS) * THUMB_W, (k // COLS) * THUMB_H))
     sheet.save(ROOT / "web/thumbs.jpg", quality=85)
