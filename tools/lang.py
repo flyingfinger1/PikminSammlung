@@ -62,6 +62,7 @@ ENGLISH = {
         "Makeup": "Kosmetik", "Curry Bowl": "Curry-Schale", "Tool": "Werkzeug",
         "College Crest Patch": "Uni-Wappen Aufnäher", "Stationery": "Schreibwaren",
         "Leaf Hat": "Blatthut", "Toothbrush": "Zahnpflege",
+        "Ball Keychain": "Ball-Schlüsselanhänger",
         # special decor (Extra)
         "Balinese Carving": "Bali-Schnitzerei", "Fall Sticker": "Herbststicker",
         "Mooncake": "Mondkuchen", "Pacifier": "Schnuller", "Shaved Ice": "Shaved Ice",
