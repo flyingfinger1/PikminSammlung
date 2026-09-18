@@ -11,6 +11,9 @@ import difflib
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -94,14 +97,19 @@ def match_rows(new_rows, old_rows):
     return match
 
 
+HEARTS = tr("Herzen", "hearts")
+
+
 def main():
     run = Path(sys.argv[1])
     new_rows, dropped = dedupe(load_new(run))
     old_rows = load_old()
     if dropped:
-        print(f"Doppelt im Scan ({len(dropped)}), die ältere Aufnahme wird ignoriert:")
+        print(tr(f"Doppelt im Scan ({len(dropped)}), die ältere Aufnahme wird ignoriert:",
+                 f"Twice in the scan ({len(dropped)}), the earlier capture is ignored:"))
         for earlier, later in dropped:
-            print(f"  #{earlier['n']} {earlier['name']} = #{later['n']} {later['name']} · {later['steps']} Schritte")
+            print(f"  #{earlier['n']} {show_name(earlier['name'])} = #{later['n']} {show_name(later['name'])}"
+                  f" · {later['steps']} {tr('Schritte', 'steps')}")
     match = match_rows(new_rows, old_rows)
     used_new = set(match)
     used_old = {j for j, _ in match.values()}
@@ -111,15 +119,15 @@ def main():
         n, o = new_rows[i], old_rows[j]
         diff = []
         if n["name"] != o["name"].split(" aus ", 1)[0]:
-            diff.append(f"Name: {o['name'].split(' aus ', 1)[0]} → {n['name']}")
+            diff.append(f"Name: {show_name(o['name'].split(' aus ', 1)[0])} → {show_name(n['name'])}")
         if int(n["fav"]) != int(o["fav"]):
-            diff.append(f"Favorit: {o['fav']} → {n['fav']}")
+            diff.append(tr("Favorit", "favorite") + f": {o['fav']} → {n['fav']}")
         if float(n["hearts"] or 0) != o["hearts_f"] or bool(int(n["gold"])) != o["gold"]:
-            diff.append(f"Herzen: {o['hearts']} → {n['hearts']}{'+G' if n['gold'] == '1' else ''}")
+            diff.append(HEARTS + f": {o['hearts']} → {n['hearts']}{'+G' if n['gold'] == '1' else ''}")
         if int(n["steps"] or 0) < int(o["steps"]):
-            diff.append(f"SCHRITTE GESUNKEN {o['steps']} → {n['steps']}")
+            diff.append(tr("SCHRITTE GESUNKEN", "STEPS WENT DOWN") + f" {o['steps']} → {n['steps']}")
         if not is_coords(n["location"]) and sim(n["location"], o["location"]) < 0.8:
-            diff.append(f"Fundort: {o['location']} → {n['location']}")
+            diff.append(tr("Fundort", "location") + f": {show_loc(o['location'])} → {show_loc(n['location'])}")
         if s < 3:
             weak.append((n, o, s))
         if diff:
@@ -128,21 +136,24 @@ def main():
     new_only = [new_rows[i] for i in range(len(new_rows)) if i not in used_new]
     gone = [old_rows[j] for j in range(len(old_rows)) if j not in used_old]
 
-    print(f"Erfasst: {len(new_rows)} · Herbarium: {len(old_rows)} · zugeordnet: {len(match)}")
-    print(f"\nNeu ({len(new_only)}):")
+    print(tr(f"Erfasst: {len(new_rows)} · Herbarium: {len(old_rows)} · zugeordnet: {len(match)}",
+             f"Captured: {len(new_rows)} · herbarium: {len(old_rows)} · matched: {len(match)}"))
+    print(tr(f"\nNeu ({len(new_only)}):", f"\nNew ({len(new_only)}):"))
     for n in new_only:
-        print(f"  #{n['n']} {n['name']} · {n['spot']} · {n['location']} · {n['date']}")
-    print(f"\nNicht mehr gefunden ({len(gone)}):")
+        print(f"  #{n['n']} {show_name(n['name'])} · {show_spot(n['spot'])} · {show_loc(n['location'])} · {n['date']}")
+    print(tr(f"\nNicht mehr gefunden ({len(gone)}):", f"\nNot found any more ({len(gone)}):"))
     for o in gone:
-        print(f"  [{o['frame']}] {o['name']} · {o['spot']} · {o['location']} · {o['date']}")
-    print(f"\nUnsichere Zuordnungen ({len(weak)}):")
+        print(f"  [{o['frame']}] {show_name(o['name'])} · {show_spot(o['spot'])} · {show_loc(o['location'])} · {o['date']}")
+    print(tr(f"\nUnsichere Zuordnungen ({len(weak)}):", f"\nUncertain matches ({len(weak)}):"))
     for n, o, s in weak:
-        print(f"  #{n['n']} {n['name']} / {n['location']}  ⇄  [{o['frame']}] {o['name']} / {o['location']}  (Score {s:.1f})")
-    notable = [(n, o, d) for n, o, d in changes if any(not x.startswith("Herzen") for x in d)]
-    print(f"\nÄnderungen außer Herzen/Schritten ({len(notable)}):")
+        print(f"  #{n['n']} {show_name(n['name'])} / {show_loc(n['location'])}  ⇄  "
+              f"[{o['frame']}] {show_name(o['name'])} / {show_loc(o['location'])}  (Score {s:.1f})")
+    notable = [(n, o, d) for n, o, d in changes if any(not x.startswith(HEARTS) for x in d)]
+    print(tr(f"\nÄnderungen außer Herzen/Schritten ({len(notable)}):",
+             f"\nChanges besides hearts/steps ({len(notable)}):"))
     for n, o, d in notable:
         print(f"  [{o['frame']}] #{n['n']}: " + " · ".join(d))
-    print(f"\nNur Herzen geändert: {len(changes) - len(notable)}")
+    print(tr(f"\nNur Herzen geändert: {len(changes) - len(notable)}", f"\nOnly hearts changed: {len(changes) - len(notable)}"))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lang import ENGLISH  # noqa: E402
+from ui import tr  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SPRITE_COLS = 20  # must match make_thumbs.py
@@ -90,7 +91,7 @@ def parse(row):
     else:
         p = PLAIN_NAME.match(name)
         if not p:
-            raise ValueError(f"unparsed name: {name}")
+            raise ValueError(tr(f"Name nicht lesbar: {name}", f"unparsed name: {name}"))
         decor, color = None, PLAIN[p.group(1)]
     origin = name.split(" aus ", 1)[1] if " aus " in name else ""
     origin = origin.removeprefix("In der Nähe: ")

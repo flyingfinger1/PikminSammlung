@@ -21,6 +21,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y  # noqa: E402
 from lang import LANGS  # noqa: E402
+from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
 from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,7 +46,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run", type=Path)
     ap.add_argument("--remove-missing", action="store_true",
-                    help="Pikmin entfernen, die im Scan nicht mehr vorkommen (freigelassen)")
+                    help=tr("Pikmin entfernen, die im Scan nicht mehr vorkommen (freigelassen)",
+                            "remove Pikmin that are not in the scan any more (released)"))
     args = ap.parse_args()
     run = args.run
     seen = run.name[:10]
@@ -124,14 +126,16 @@ def main():
         sheet.paste(crop.resize((THUMB_W, THUMB_H)), ((k % COLS) * THUMB_W, (k // COLS) * THUMB_H))
     sheet.save(ROOT / "web/thumbs.jpg", quality=85)
 
-    print(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten")
+    print(tr(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten",
+             f"{len(match)} updated, {len(added)} new, {len(source)} portraits recut"))
     for r in added:
-        print(f"  [{r['frame']}] {r['name']} · {r['spot']} · {r['location']} · {r['date']}")
+        print(f"  [{r['frame']}] {show_name(r['name'])} · {show_spot(r['spot'])} · {show_loc(r['location'])} · {r['date']}")
     if gone:
-        what = "entfernt" if args.remove_missing else "nicht im Scan, bleiben erhalten"
+        what = tr("entfernt", "removed") if args.remove_missing else \
+            tr("nicht im Scan, bleiben erhalten", "not in the scan, kept")
         print(f"{len(gone)} {what}:")
         for o in gone:
-            print(f"  [{o['frame']}] {o['name']} · {o['location']} · {o['date']}")
+            print(f"  [{o['frame']}] {show_name(o['name'])} · {show_loc(o['location'])} · {o['date']}")
 
 
 if __name__ == "__main__":

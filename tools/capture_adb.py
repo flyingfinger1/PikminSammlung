@@ -1,7 +1,7 @@
 """Page through the Pikmin detail view over ADB and save one checked screenshot per Pikmin.
 
 Open the first Pikmin's detail view on the phone, connect it via USB (USB debugging on,
-"Nicht stören" recommended), then run:
+"Do not disturb" recommended), then run:
 
     py tools/capture_adb.py --test          # one screenshot + one swipe, reports what it saw
     py tools/capture_adb.py                 # full run into captures/<date>/
@@ -25,6 +25,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lang import LANGS, detect  # noqa: E402
+from ui import name, tr  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OCR_PS1 = ROOT / "tools" / "ocr.ps1"
@@ -49,7 +50,8 @@ def adb_path():
         return found
     if ADB_FALLBACK.exists():
         return str(ADB_FALLBACK)
-    sys.exit("adb not found - install Google.PlatformTools")
+    sys.exit(tr("adb nicht gefunden - Google.PlatformTools installieren",
+                "adb not found - install Google.PlatformTools"))
 
 
 ADB = None  # resolved on first use: parsing/applying imports this module but needs no adb
@@ -71,21 +73,24 @@ def adb(*args, binary=False, attempts=3):
             return out.stdout if binary else out.stdout.decode("utf-8", "replace")
         last = (out.stderr or out.stdout).decode("utf-8", "replace").strip()
         if attempt + 1 < attempts:
-            print(f"  adb-Fehler ({last or 'ohne Meldung'}), neuer Versuch ...", flush=True)
+            print(tr(f"  adb-Fehler ({last or 'ohne Meldung'}), neuer Versuch ...",
+                     f"  adb error ({last or 'no message'}), trying again ..."), flush=True)
             try:
                 subprocess.run([ADB, "wait-for-device"], capture_output=True, timeout=30)
             except subprocess.TimeoutExpired:
                 break  # no device came back - report instead of hanging
             time.sleep(2)
-    raise AdbError(last or f"adb {' '.join(args[:2])} fehlgeschlagen")
+    raise AdbError(last or tr(f"adb {' '.join(args[:2])} fehlgeschlagen", f"adb {' '.join(args[:2])} failed"))
 
 
 def ensure_device():
     lines = [l for l in adb("devices").splitlines()[1:] if l.strip()]
     if not lines:
-        sys.exit("Kein Handy gefunden. USB-Debugging an? Kabel mit Datenübertragung?")
+        sys.exit(tr("Kein Handy gefunden. USB-Debugging an? Kabel mit Datenübertragung?",
+                    "No phone found. USB debugging on? A cable that carries data?"))
     if any("unauthorized" in l for l in lines):
-        sys.exit("Handy fragt nach Erlaubnis: auf dem Handy 'USB-Debugging zulassen' bestätigen.")
+        sys.exit(tr("Handy fragt nach Erlaubnis: auf dem Handy 'USB-Debugging zulassen' bestätigen.",
+                    "The phone asks for permission: confirm 'Allow USB debugging' on the phone."))
 
 
 def foreground_app():
@@ -188,9 +193,10 @@ def detect_language(out_dir):
     code = detect(ocr(path, LANGS["de"]))
     path.unlink()
     if code is None:
-        sys.exit("Keine Pikmin-Detailansicht erkannt (Sprache unklar). Karte öffnen und nochmal.")
+        sys.exit(tr("Keine Pikmin-Detailansicht erkannt (Sprache unklar). Karte öffnen und nochmal.",
+                    "No Pikmin detail view found (language unclear). Open a card and try again."))
     LANG = LANGS[code]
-    print(f"Spielsprache: {code}", flush=True)
+    print(tr(f"Spielsprache: {code}", f"Game language: {code}"), flush=True)
     return code
 
 
@@ -209,8 +215,11 @@ def capture_checked(out_dir, n, base_brightness):
             missing = readable(lines, img.height)
         if not dimmed and not missing:
             return img, sig, lines
-        why = "abgedunkelt (Dialog?)" if dimmed else "nicht lesbar: " + ", ".join(missing)
-        print(f"  #{n:03d} {why} - Versuch {attempt}/{RETRIES_UNREADABLE}", flush=True)
+        shown = {"Schritte": tr("Schritte", "steps"), "Entdeckt": tr("Entdeckt", "Discovered")}
+        why = tr("abgedunkelt (Dialog?)", "dimmed (dialog?)") if dimmed else \
+            tr("nicht lesbar: ", "not readable: ") + ", ".join(shown.get(m, m) for m in missing)
+        print(tr(f"  #{n:03d} {why} - Versuch {attempt}/{RETRIES_UNREADABLE}",
+                 f"  #{n:03d} {why} - attempt {attempt}/{RETRIES_UNREADABLE}"), flush=True)
         time.sleep(2)
     path.unlink()  # so --resume retakes this card instead of skipping it
     return None, None, None
@@ -220,18 +229,20 @@ def run(out_dir, start_n, test=False):
     try:
         _run(out_dir, start_n, test)
     except (AdbError, subprocess.TimeoutExpired) as e:
-        print(f"\nAbbruch: Verbindung zum Handy unterbrochen ({e}).\n"
-              f"Kabel prüfen, Handy entsperren, Pikmin Bloom offen lassen, dann weiter mit:\n"
-              f"  py tools/capture_adb.py --resume {out_dir}")
+        print(tr(f"\nAbbruch: Verbindung zum Handy unterbrochen ({e}).\n"
+                 f"Kabel prüfen, Handy entsperren, Pikmin Bloom offen lassen, dann weiter mit:\n",
+                 f"\nStopped: connection to the phone lost ({e}).\n"
+                 f"Check the cable, unlock the phone, keep Pikmin Bloom open, then continue with:\n")
+              + f"  py tools/capture_adb.py --resume {out_dir}")
 
 
 def _run(out_dir, start_n, test=False):
     ensure_device()
     front = foreground_app()
     if PACKAGE_HINT not in front.lower():
-        sys.exit(f"Pikmin Bloom ist nicht im Vordergrund: {front}")
+        sys.exit(tr(f"Pikmin Bloom ist nicht im Vordergrund: {front}", f"Pikmin Bloom is not in front: {front}"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Ordner: {out_dir}", flush=True)
+    print(tr(f"Ordner: {out_dir}", f"Folder: {out_dir}"), flush=True)
     code = detect_language(out_dir)
     log = (out_dir / "log.jsonl").open("a", encoding="utf-8")
     seen = []
@@ -243,17 +254,20 @@ def _run(out_dir, start_n, test=False):
         # resuming: if the phone still shows the last saved card, move on first
         last_sig = signature(Image.open(last).convert("RGB"))
         if same(signature(screenshot()), last_sig):
-            print(f"Karte #{start_n - 1:03d} ist schon gespeichert - wische weiter.", flush=True)
+            print(tr(f"Karte #{start_n - 1:03d} ist schon gespeichert - wische weiter.",
+                     f"Card #{start_n - 1:03d} is already saved - swiping on."), flush=True)
             swipe()
             time.sleep(SETTLE)
             if same(signature(screenshot()), last_sig):
-                print(f"Ende: nach #{start_n - 1:03d} ändert Wischen nichts mehr.")
+                print(tr(f"Ende: nach #{start_n - 1:03d} ändert Wischen nichts mehr.",
+                         f"End: swiping changes nothing after #{start_n - 1:03d}."))
                 return
     while True:
         img, sig, lines = capture_checked(out_dir, n, base)
         if img is None:
-            print(f"Abbruch bei #{n:03d}: Karte bleibt unlesbar. Problem am Handy beheben, dann "
-                  f"weiter mit: py tools/capture_adb.py --resume {out_dir}")
+            print(tr(f"Abbruch bei #{n:03d}: Karte bleibt unlesbar. Problem am Handy beheben, dann weiter mit: ",
+                     f"Stopped at #{n:03d}: the card stays unreadable. Fix the phone, then continue with: ")
+                  + f"py tools/capture_adb.py --resume {out_dir}")
             return
         base = sig.mean() if base is None else base
         key = card_key(lines, img.height)
@@ -263,7 +277,8 @@ def _run(out_dir, start_n, test=False):
         if repeat is not None:
             for suffix in ("", "_b"):
                 (out_dir / f"{n:03d}{suffix}.png").unlink(missing_ok=True)
-            print(f"Ende: Karte #{n:03d} gleicht #{repeat:03d}. {n - start_n} Pikmin erfasst.")
+            print(tr(f"Ende: Karte #{n:03d} gleicht #{repeat:03d}. {n - start_n} Pikmin erfasst.",
+                     f"End: card #{n:03d} equals #{repeat:03d}. {n - start_n} Pikmin captured."))
             return
         seen.append((n, sig))
         seen_keys[n] = key
@@ -273,22 +288,24 @@ def _run(out_dir, start_n, test=False):
         log.flush()
         print(f"#{n:03d} {name}", flush=True)
         if test:
-            print("Test: wische einmal ...")
+            print(tr("Test: wische einmal ...", "Test: swiping once ..."))
         # next card; retry the swipe if nothing changed
         for attempt in range(1, RETRIES_SWIPE + 1):
             if PACKAGE_HINT not in foreground_app().lower():
-                print("Abbruch: Pikmin Bloom ist nicht mehr im Vordergrund.")
+                print(tr("Abbruch: Pikmin Bloom ist nicht mehr im Vordergrund.",
+                         "Stopped: Pikmin Bloom is no longer in front."))
                 return
             swipe()
             time.sleep(SETTLE)
             if not same(signature(screenshot()), sig):
                 break
         else:
-            print(f"Ende: nach #{n:03d} ändert Wischen nichts mehr. {n - start_n + 1} Pikmin erfasst.")
+            print(tr(f"Ende: nach #{n:03d} ändert Wischen nichts mehr. {n - start_n + 1} Pikmin erfasst.",
+                     f"End: swiping changes nothing after #{n:03d}. {n - start_n + 1} Pikmin captured."))
             return
         n += 1
         if test and n > start_n + 1:
-            print("Test fertig.")
+            print(tr("Test fertig.", "Test done."))
             return
 
 
@@ -298,14 +315,15 @@ def single(run_dir):
 
     ensure_device()
     if PACKAGE_HINT not in foreground_app().lower():
-        sys.exit("Pikmin Bloom ist nicht im Vordergrund.")
+        sys.exit(tr("Pikmin Bloom ist nicht im Vordergrund.", "Pikmin Bloom is not in front."))
     code = detect_language(run_dir)
     tmp = 999
     for stale in run_dir.glob(f"{tmp}*.png"):
         stale.unlink()
     img, _, lines = capture_checked(run_dir, tmp, None)
     if img is None:
-        sys.exit("Karte nicht lesbar - Popup schließen und nochmal.")
+        sys.exit(tr("Karte nicht lesbar - Popup schließen und nochmal.",
+                    "Card not readable - close the popup and try again."))
     card = parse_card(run_dir, {"n": tmp, "lines": lines, "device": list(DEVICE), "lang": code})
 
     log_path = run_dir / "log.jsonl"
@@ -338,15 +356,16 @@ def single(run_dir):
     with log_path.open("w", encoding="utf-8") as f:
         for r in recs:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    what = "ersetzt" if target else "neu angehängt"
-    print(f"#{n:03d} {card['name']} ({card['steps']} Schritte, {card['date']}) {what}")
+    what = tr("ersetzt", "replaced") if target else tr("neu angehängt", "appended")
+    print(f"#{n:03d} {name(card['name'])} ({card['steps']} {tr('Schritte', 'steps')}, {card['date']}) {what}")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true")
     ap.add_argument("--resume", type=Path)
-    ap.add_argument("--single", type=Path, help="Laufordner: nur die offene Karte neu aufnehmen")
+    ap.add_argument("--single", type=Path, help=tr("Laufordner: nur die offene Karte neu aufnehmen",
+                                                   "run folder: re-take only the open card"))
     args = ap.parse_args()
     if args.single:
         single(args.single)

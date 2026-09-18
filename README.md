@@ -16,8 +16,8 @@ script pages through the Pikmin detail view over **ADB**, reads each card with t
 **Windows OCR** and turns the result into a static page. A small server hosts that page; new
 data is uploaded with a token, so updates need no rebuild.
 
-> The game can be set to **German or English** while scanning. The page is available in **German
-> and English** (switch at the top right); the scripts' messages are in German.
+> The game can be set to **German or English** while scanning. The page (switch at the top right)
+> and the scripts' messages are available in **German and English**.
 
 ## Requirements
 
@@ -50,7 +50,7 @@ Pikmin in a group are a separate list – append them with option 4.
 
 | File | Content |
 |---|---|
-| `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"` for the rare Acorn); `language` (`"de"` or `"en"`, optional) is the default language of the page – without it the visitor's browser language decides |
+| `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"` for the rare Acorn); `language` (`"de"` or `"en"`, optional) is the language of the script messages and the default language of the page – without it the scripts follow the system language and the page the visitor's browser (`PIKMIN_LANG=en` overrides it for a single run) |
 | `publish.local.json` | server URL and upload token, see `publish.example.json` |
 
 Everything you collect – `captures/`, `data/`, the built page – stays local and is ignored by git,

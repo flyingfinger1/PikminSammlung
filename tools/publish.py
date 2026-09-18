@@ -13,6 +13,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from ui import tr  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "publish.local.json"
 # portraits first: the new page never points at an outdated sprite
@@ -41,25 +44,30 @@ def check_token(url, token, context):
         if error.code == 403:
             return
         if error.code == 401:
-            sys.exit("Upload-Token passt nicht zum Server. UPLOAD_TOKEN in der .env auf dem Server prüfen "
-                     "(gleicher Wert wie 'token' in publish.local.json, ohne Anführungszeichen, "
-                     "Unix-Zeilenenden) und danach 'docker compose up -d'.")
-        sys.exit(f"Token-Prüfung: Server meldet {error.code}")
+            sys.exit(tr("Upload-Token passt nicht zum Server. UPLOAD_TOKEN in der .env auf dem Server prüfen "
+                        "(gleicher Wert wie 'token' in publish.local.json, ohne Anführungszeichen, "
+                        "Unix-Zeilenenden) und danach 'docker compose up -d'.",
+                        "The upload token does not match the server. Check UPLOAD_TOKEN in the .env on the "
+                        "server (same value as 'token' in publish.local.json, no quotes, Unix line endings), "
+                        "then run 'docker compose up -d'."))
+        sys.exit(tr(f"Token-Prüfung: Server meldet {error.code}", f"Token check: server answers {error.code}"))
     except urllib.error.URLError as error:
-        sys.exit(f"Server nicht erreichbar ({url}): {error.reason}")
+        sys.exit(tr(f"Server nicht erreichbar ({url}): {error.reason}", f"Server not reachable ({url}): {error.reason}"))
 
 
 def main():
     context = tls_context()
     if not CONFIG.exists():
-        sys.exit(f"{CONFIG.name} fehlt - Vorlage siehe README (url + token).")
+        sys.exit(tr(f"{CONFIG.name} fehlt - Vorlage siehe README (url + token).",
+                    f"{CONFIG.name} is missing - see the README for the template (url + token)."))
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     url = cfg["url"].rstrip("/")
     check_token(url, cfg["token"], context)
     for name in FILES:
         path = ROOT / "web" / name
         if not path.exists():
-            sys.exit(f"{path} fehlt - erst 'Übernehmen + Seite bauen'.")
+            sys.exit(tr(f"{path} fehlt - erst 'Übernehmen + Seite bauen'.",
+                        f"{path} is missing - run 'Apply + build page' first."))
         data = path.read_bytes()
         request = urllib.request.Request(
             f"{url}/api/files/{name}", data=data, method="PUT",
@@ -68,13 +76,16 @@ def main():
             with urllib.request.urlopen(request, timeout=180, context=context) as response:
                 result = json.load(response)
         except urllib.error.HTTPError as error:
-            sys.exit(f"{name}: Server meldet {error.code} - {error.read().decode('utf-8', 'replace')}")
+            sys.exit(tr(f"{name}: Server meldet {error.code}", f"{name}: server answers {error.code}")
+                     + f" - {error.read().decode('utf-8', 'replace')}")
         except urllib.error.URLError as error:
-            sys.exit(f"Server nicht erreichbar ({url}): {error.reason}")
+            sys.exit(tr(f"Server nicht erreichbar ({url}): {error.reason}", f"Server not reachable ({url}): {error.reason}"))
         if result.get("sha256") != hashlib.sha256(data).hexdigest():
-            sys.exit(f"{name}: Prüfsumme stimmt nicht - bitte nochmal veröffentlichen.")
-        print(f"  {name}: {len(data) / 1024:.0f} KB hochgeladen, Prüfsumme ok")
-    print(f"Veröffentlicht: {url}")
+            sys.exit(tr(f"{name}: Prüfsumme stimmt nicht - bitte nochmal veröffentlichen.",
+                        f"{name}: checksum does not match - please publish again."))
+        print(tr(f"  {name}: {len(data) / 1024:.0f} KB hochgeladen, Prüfsumme ok",
+                 f"  {name}: {len(data) / 1024:.0f} KB uploaded, checksum ok"))
+    print(tr(f"Veröffentlicht: {url}", f"Published: {url}"))
 
 
 if __name__ == "__main__":

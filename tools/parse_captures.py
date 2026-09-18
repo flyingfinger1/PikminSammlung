@@ -19,6 +19,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y, ocr  # noqa: E402
 from lang import EN_STEPS, LANGS, en_date, en_decor, en_location, en_name, en_spot  # noqa: E402
+from ui import name as show_name, tr  # noqa: E402
 
 COLORS = {"Rot": "Rot", "Gelb": "Gelb", "Blau": "Blau", "Lila": "Lila", "Weiß": "Weiß",
           "Fels": "Fels", "Flügel": "Flügel", "Eis": "Eis"}
@@ -233,7 +234,7 @@ def parse_card(run, rec):
             p = re.match(r"^(Rotes|Gelbes|Blaues|Lila|Weißes|Fels|Flügel|Eis)[ -]Pikmin", base)
             decor, color = None, PLAIN.get(p.group(1)) if p else None
     if color not in COLORS:
-        problems.append(f"Farbe? '{base}'")
+        problems.append(tr(f"Farbe? '{base}'", f"type? '{base}'"))
 
     steps_line = next(((y, t) for y, t in main if L["steps"] in t), None)
     steps = None
@@ -242,9 +243,9 @@ def parse_card(run, rec):
         if steps is None or (rec.get("device") and rec["device"][0] < 1000):  # small text: read enlarged
             steps = steps_fallback(run / f"{n:03d}.png", steps_line[0], run / "_steps_tmp.png", L) or steps
             if steps is None:
-                problems.append(f"Schritte? '{steps_line[1]}'")
+                problems.append(tr(f"Schritte? '{steps_line[1]}'", f"steps? '{steps_line[1]}'"))
     else:
-        problems.append("Schritte fehlen")
+        problems.append(tr("Schritte fehlen", "steps missing"))
 
     img = Image.open(run / f"{n:03d}.png").convert("RGB")
     hearts, gold, gold_full = read_hearts(img, steps_line[0]) if steps_line else (None, False, 0)
@@ -264,7 +265,7 @@ def parse_card(run, rec):
     if en:
         known = en_spot(spot)
         if spot and not known:  # add it to ENGLISH["spots"] in tools/lang.py
-            problems.append(f"Ort unbekannt: '{spot}'")
+            problems.append(tr(f"Ort unbekannt: '{spot}'", f"unknown place: '{spot}'"))
         spot = known or spot
         spot_decor = en_decor(spot_decor) if spot_decor else ""
         if decor and spot_decor and decor != spot_decor and \
@@ -294,7 +295,7 @@ def parse_card(run, rec):
             if li is not None and li < ld:
                 location = " ".join(t for _, t in lower[li + 1:ld] if not EGG.fullmatch(t))
             else:
-                problems.append("Fundort evtl. abgeschnitten")
+                problems.append(tr("Fundort evtl. abgeschnitten", "location may be cut off"))
     if en:
         location = en_location(location)
     date = parse_date(date_text, L)
@@ -302,9 +303,9 @@ def parse_card(run, rec):
     if (lowres or not date) and date_y is not None:
         date = date_fallback(date_img, date_y, run / "_date_tmp.png", L) or date
     if not date:
-        problems.append(f"Datum? '{date_text}'")
+        problems.append(tr(f"Datum? '{date_text}'", f"date? '{date_text}'"))
     if decor and spot_decor and decor != spot_decor:
-        problems.append(f"Deko Name/Karte: {decor} ≠ {spot_decor}")
+        problems.append(tr(f"Deko Name/Karte: {decor} ≠ {spot_decor}", f"decor name/card: {decor} ≠ {spot_decor}"))
 
     return {"n": n, "name": base, "origin": origin,
             "color": color or "", "decor": decor or "", "fav": int(fav), "hearts": hearts,
@@ -350,7 +351,8 @@ def assign_variants(rows):
             for r, b in members:
                 r["variant"] = b
         else:
-            note = f"Set offen: {found} statt {MULTI_SETS[key]} Blöcke"
+            note = tr(f"Set offen: {found} statt {MULTI_SETS[key]} Blöcke",
+                      f"set open: {found} instead of {MULTI_SETS[key]} blocks")
             for r, _ in members:
                 r["problems"] = "; ".join(filter(None, [r["problems"], note]))
 
@@ -365,9 +367,10 @@ def main():
         w.writeheader()
         w.writerows(rows)
     bad = [r for r in rows if r["problems"]]
-    print(f"{len(rows)} Karten -> {run / 'parsed.tsv'}, {len(bad)} mit Auffälligkeiten")
+    print(tr(f"{len(rows)} Karten -> {run / 'parsed.tsv'}, {len(bad)} mit Auffälligkeiten",
+             f"{len(rows)} cards -> {run / 'parsed.tsv'}, {len(bad)} with remarks"))
     for r in bad:
-        print(f"  #{r['n']:03d} {r['name']}: {r['problems']}")
+        print(f"  #{r['n']:03d} {show_name(r['name'])}: {r['problems']}")
 
 
 if __name__ == "__main__":
