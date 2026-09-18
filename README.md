@@ -98,3 +98,8 @@ docker compose up -d
 ```
 
 Put the same token into `publish.local.json` and publish from the menu (option 8).
+
+## License
+
+[MIT](LICENSE). Pikmin and Pikmin Bloom are trademarks of Nintendo; this is an unofficial fan
+project and not affiliated with Nintendo or the developers of the game. Game data comes from the Pikmin Wiki.
