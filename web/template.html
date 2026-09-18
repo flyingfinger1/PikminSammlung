@@ -635,10 +635,10 @@ const available = (k, n) => {
 };
 // rare sets unlocked in the in-game collection (config.local.json "rare_unlocked")
 const RARE_UNLOCKED = (DATA.config && DATA.config.rareUnlocked) || [];
-// normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026). German names still
-// unknown and therefore missing: Toothbrush (Apotheke), Ball Keychain (Stadion)
-const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Hirschkäfer", "Eichelhut", "Köder", "Ticket",
-  "Banane", "Baguette", "Schere", "Vierblättriger Klee", "Münze"]);
+// normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026). German name still
+// unknown and therefore missing: Ball Keychain (Stadion)
+const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Zahnpflege", "Hirschkäfer", "Eichelhut", "Köder",
+  "Ticket", "Banane", "Baguette", "Schere", "Vierblättriger Klee", "Münze"]);
 function rareBadge(k, names) {
   if (baseOf(k)) return { cls: "rare", html: `<span class="rare-badge rare" title="${T.rareTitle}">${T.rare}</span>` };
   if (RARE_EXISTS.has(k) || names.has(k + RARE))

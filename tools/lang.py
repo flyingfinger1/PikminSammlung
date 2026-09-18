@@ -61,7 +61,7 @@ ENGLISH = {
         "Bridge Pin Badge": "Brücke-Anstecknadel", "Hotel Amenities": "Hotel-Annehmlichkeiten",
         "Makeup": "Kosmetik", "Curry Bowl": "Curry-Schale", "Tool": "Werkzeug",
         "College Crest Patch": "Uni-Wappen Aufnäher", "Stationery": "Schreibwaren",
-        "Leaf Hat": "Blatthut",
+        "Leaf Hat": "Blatthut", "Toothbrush": "Zahnpflege",
         # special decor (Extra)
         "Balinese Carving": "Bali-Schnitzerei", "Fall Sticker": "Herbststicker",
         "Mooncake": "Mondkuchen", "Pacifier": "Schnuller", "Shaved Ice": "Shaved Ice",
