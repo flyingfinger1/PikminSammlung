@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CROP = (0.13, 0.10, 0.87, 0.385)   # same framing as make_thumbs.py
 BUTTON_Y, BUTTON_GAP = 993, 93      # OCR top of "Zur Gruppe hinzufügen" on an unscrolled card; crop ends 93px above
 THUMB_W, THUMB_H, COLS = 160, 133, 20
-FIELDS = ["frame", "name", "fav", "hearts", "steps", "spot", "decor", "location", "date", "seen", "motif"]
+FIELDS = ["frame", "name", "fav", "hearts", "steps", "spot", "decor", "location", "date", "seen", "motif",
+          "goldhearts"]
 
 
 def hearts_text(n):
@@ -65,6 +66,7 @@ def main():
             o["location"] = n["location"]
         o["seen"] = seen
         o["motif"] = n.get("variant", "")
+        o["goldhearts"] = n.get("gold_hearts", "")
         source[o["frame"]] = int(n["n"])
 
     next_frame = max(int(o["frame"]) for o in old_rows) + 1  # before removal: frame numbers are never reused
@@ -80,7 +82,7 @@ def main():
         row = {"frame": f"{next_frame:03d}", "name": n["name"] + (" aus " + origin if origin else ""),
                "fav": n["fav"], "hearts": hearts_text(n), "steps": n["steps"], "spot": n["spot"],
                "decor": n["spot_decor"], "location": n["location"], "date": n["date"], "seen": seen,
-               "motif": n.get("variant", "")}
+               "motif": n.get("variant", ""), "goldhearts": n.get("gold_hearts", "")}
         old_rows.append(row)
         source[row["frame"]] = int(n["n"])
         added.append(row)

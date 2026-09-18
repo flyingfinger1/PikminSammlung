@@ -1,7 +1,9 @@
 # Pikmin-Herbarium
 
 Übersicht über alle eigenen Pikmin aus **Pikmin Bloom**: Porträt, Deko, Freundschaft, Schritte,
-Fundort und eine Deko-Matrix mit Kandidaten. Die Daten werden per **ADB** direkt vom Handy
+Fundort, eine Deko-Matrix mit Kandidaten (sortiert wie die Deko-Sammlung, seltene Deko markiert) und
+ein Pilzkampf-Reiter mit der Gesamtstärke der 40 stärksten Pikmin je Pilz und Kopfschmuck
+(Formel laut [Pikmin-Wiki](https://www.pikminwiki.com/Mushroom_battle)). Die Daten werden per **ADB** direkt vom Handy
 gescannt, per Texterkennung (Windows OCR) ausgewertet und als statische Seite gebaut, die auf
 einem eigenen Server läuft (öffentlich, Upload per Token geschützt).
 

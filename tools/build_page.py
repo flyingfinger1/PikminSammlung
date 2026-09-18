@@ -90,9 +90,11 @@ def parse(row):
         "fav": row["fav"] == "1",
         "hearts": float(hearts.replace("+G", "")),
         "gold": hearts.endswith("+G"),
+        "goldHearts": int(row.get("goldhearts") or 0),  # completed gold hearts (mushroom attack power)
         "steps": int(row["steps"]),
         "location": row["location"],
         "date": row["date"],
+        "seen": row.get("seen") or None,  # date of the scan this row comes from
     }
 
 

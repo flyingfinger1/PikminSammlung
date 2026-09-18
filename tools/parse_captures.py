@@ -76,7 +76,7 @@ def read_hearts(img, steps_y):
     a = np.asarray(img)
     y = steps_y + HEART_DY
     band = a[y - 12:y + 12]
-    total, gold_any = 0.0, False
+    total, gold_any, gold_full = 0.0, False, 0
     for i in range(4):
         cx = HEART_X0 + HEART_DX * i
         red, gold, grey = classify(band[:, cx - HEART_HALF:cx + HEART_HALF])
@@ -86,7 +86,10 @@ def read_hearts(img, steps_y):
             continue
         total += coloured.sum() / heart.sum()
         gold_any |= bool(gold.sum() > 20)
-    return round(total * 4) / 4, gold_any
+        # completed gold heart (attack power counts only full ones); verified: full >= 0.93,
+        # nearly full ones read 0.77-0.86
+        gold_full += gold.any(axis=0).sum() / heart.sum() >= 0.9
+    return round(total * 4) / 4, gold_any, int(gold_full)
 
 
 def read_star(img, name_top, name_bottom):
@@ -195,7 +198,7 @@ def parse_card(run, rec):
         problems.append("Schritte fehlen")
 
     img = Image.open(run / f"{n:03d}.png").convert("RGB")
-    hearts, gold = read_hearts(img, steps_line[0]) if steps_line else (None, False)
+    hearts, gold, gold_full = read_hearts(img, steps_line[0]) if steps_line else (None, False, 0)
     fav = read_star(img, name_lines[0][0], name_lines[-1][0] + 70) if name_lines else False
 
     # card block below the steps; the spot line ("Wald / Eichelhut" or just "Park") comes first
@@ -243,7 +246,7 @@ def parse_card(run, rec):
 
     return {"n": n, "name": base, "origin": origin,
             "color": color or "", "decor": decor or "", "fav": int(fav), "hearts": hearts,
-            "gold": int(gold), "steps": steps if steps is not None else "", "spot": spot,
+            "gold": int(gold), "gold_hearts": gold_full, "steps": steps if steps is not None else "", "spot": spot,
             "spot_decor": spot_decor, "location": location, "date": date or "",
             "group": int(group), "problems": "; ".join(problems)}
 
