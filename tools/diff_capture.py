@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_old():
-    with (ROOT / "data/pikmin.tsv").open(encoding="utf-8") as f:
+    tsv = ROOT / "data/pikmin.tsv"
+    if not tsv.exists():  # first scan: empty collection
+        return []
+    with tsv.open(encoding="utf-8") as f:
         rows = list(csv.DictReader(f, delimiter="\t"))
     for r in rows:
         name = r["name"].split(" aus ", 1)[0]

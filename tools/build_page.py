@@ -38,6 +38,12 @@ CATEGORY_ORDER = [
 ]
 
 
+def load_config():
+    """Settings of this collection, kept out of the repo (template: config.example.json)."""
+    path = ROOT / "config.local.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
 def set_order():
     """Sets within a place in the order of the latest scan: the in-game list sorted by decor
     follows the collection (e.g. Hirschkäfer before Eichelhut, Sticker grün/blau/gelb, Münze)."""
@@ -120,7 +126,9 @@ def main():
             "h": sprite.height // sprite_rows, "rows": sprite_rows,
             "missing": 0}
     order = {"spots": CATEGORY_ORDER, "sets": set_order()}
-    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order}, ensure_ascii=False)
+    cfg = load_config()
+    config = {"rareUnlocked": cfg.get("rare_unlocked", [])}
+    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config}, ensure_ascii=False)
     template = (ROOT / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")

@@ -11,7 +11,7 @@ services:
       - caddy-net
     # Caddy reverse proxy labels (remove if not using caddy-docker-proxy)
     labels:
-      caddy: pikmin-sammlung.flyingfinger.de
+      caddy: pikmin.example.com   # your domain
       caddy.reverse_proxy: "{{upstreams 8080}}"
 
 volumes:

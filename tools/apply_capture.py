@@ -69,7 +69,8 @@ def main():
         o["goldhearts"] = n.get("gold_hearts", "")
         source[o["frame"]] = int(n["n"])
 
-    next_frame = max(int(o["frame"]) for o in old_rows) + 1  # before removal: frame numbers are never reused
+    # before removal: frame numbers are never reused
+    next_frame = max((int(o["frame"]) for o in old_rows), default=0) + 1
     matched_old = {j for j, _ in match.values()}
     gone = [o for j, o in enumerate(old_rows) if j not in matched_old]
     if gone and args.remove_missing:
@@ -89,7 +90,9 @@ def main():
         next_frame += 1
 
     tsv = ROOT / "data/pikmin.tsv"
-    shutil.copy(tsv, tsv.with_suffix(".tsv.bak"))
+    tsv.parent.mkdir(parents=True, exist_ok=True)
+    if tsv.exists():
+        shutil.copy(tsv, tsv.with_suffix(".tsv.bak"))
     with tsv.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS, delimiter="\t", lineterminator="\n", extrasaction="ignore")
         w.writeheader()
@@ -98,8 +101,8 @@ def main():
     frames = max(int(o["frame"]) for o in old_rows)
     rows = -(-frames // COLS)
     sheet = Image.new("RGB", (COLS * THUMB_W, rows * THUMB_H), "white")
-    old_sheet = Image.open(ROOT / "web/thumbs.jpg")
-    sheet.paste(old_sheet, (0, 0))  # frames without a capture keep their old portrait
+    if (ROOT / "web/thumbs.jpg").exists():  # frames without a capture keep their old portrait
+        sheet.paste(Image.open(ROOT / "web/thumbs.jpg"), (0, 0))
     # anchor the portrait on the group button: a slightly scrolled page moves everything up
     button_y = {}
     for line in (run / "log.jsonl").open(encoding="utf-8"):

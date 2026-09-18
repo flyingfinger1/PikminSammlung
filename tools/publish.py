@@ -1,7 +1,7 @@
 """Upload the built page (web/thumbs.jpg + web/index.html) to the Pikmin-Herbarium server.
 
-Config (never committed): publish.local.json in the project folder
-    {"url": "https://pikmin-sammlung.flyingfinger.de", "token": "<UPLOAD_TOKEN of the server>"}
+Config (never committed): publish.local.json in the project folder, see publish.example.json
+    {"url": "https://pikmin.example.com", "token": "<UPLOAD_TOKEN of the server>"}
 
 Usage: py tools/publish.py
 """

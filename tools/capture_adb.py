@@ -48,7 +48,7 @@ def adb_path():
     sys.exit("adb not found - install Google.PlatformTools")
 
 
-ADB = adb_path()
+ADB = None  # resolved on first use: parsing/applying imports this module but needs no adb
 
 
 class AdbError(RuntimeError):
@@ -57,6 +57,9 @@ class AdbError(RuntimeError):
 
 def adb(*args, binary=False, attempts=3):
     """Run adb; a short USB hiccup or standby gets retried after waiting for the device."""
+    global ADB
+    if ADB is None:
+        ADB = adb_path()
     last = ""
     for attempt in range(attempts):
         out = subprocess.run([ADB, *args], capture_output=True)

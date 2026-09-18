@@ -1,0 +1,4 @@
+{
+ "url": "https://pikmin.example.com",
+ "token": "same value as UPLOAD_TOKEN in the server's .env"
+}

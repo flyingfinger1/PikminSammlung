@@ -6,8 +6,9 @@ web/index.html
 web/thumbs.jpg
 *.bak
 
-# secrets
+# secrets and settings of your own collection
 publish.local.json
+config.local.json
 server.env.local
 .env
 

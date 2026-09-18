@@ -1,69 +1,100 @@
 # Pikmin-Herbarium
 
-Übersicht über alle eigenen Pikmin aus **Pikmin Bloom**: Porträt, Deko, Freundschaft, Schritte,
-Fundort, eine Deko-Matrix mit Kandidaten (sortiert wie die Deko-Sammlung, seltene Deko markiert) und
-ein Pilzkampf-Reiter mit der Gesamtstärke der 40 stärksten Pikmin je Pilz und Kopfschmuck
-(Formel laut [Pikmin-Wiki](https://www.pikminwiki.com/Mushroom_battle)). Die Daten werden per **ADB** direkt vom Handy
-gescannt, per Texterkennung (Windows OCR) ausgewertet und als statische Seite gebaut, die auf
-einem eigenen Server läuft (öffentlich, Upload per Token geschützt).
+A personal catalogue of all your **Pikmin Bloom** Pikmin, built from your own phone:
 
-## Bedienung
+- **Pikmin** – portrait, colour, decor, friendship (hearts and gold hearts), steps, favourite, where
+  and when each Pikmin was found; filter, search and sort.
+- **Decor matrix** – every decor type × colour in the order of the in-game decor collection, with
+  the missing colours for which you already have a fitting Pikmin (candidates), rare decor marked,
+  sums of open candidates and Pikmin that can still earn rare-decor points by reaching level 4.
+- **Mushroom battle** – total attack power of your 40 strongest Pikmin for every mushroom type and
+  head state (bare, leaf, flower, seasonal flower, flower of the month), including a selectable
+  decor event; click a total to see which Pikmin would attack.
 
-Doppelklick auf **`pikmin.bat`** (oder `py tools/pikmin.py`) öffnet das Menü:
+There is no official way to export your Pikmin, so the collection is read from the screen: a
+script pages through the Pikmin detail view over **ADB**, reads each card with the built-in
+**Windows OCR** and turns the result into a static page. A small server hosts that page; new
+data is uploaded with a token, so updates need no rebuild.
 
-| Punkt | Was passiert |
+> The page and all messages are in **German**, matching the German game texts the scripts read.
+
+## Requirements
+
+- **Windows 10/11** with the German OCR language (Windows OCR via PowerShell is used for text
+  recognition) and **Python 3.12+** with the packages from `requirements.txt`
+  (`py -m pip install -r requirements.txt`)
+- **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`
+- An **Android phone** with USB debugging enabled and Pikmin Bloom set to **German**.
+  Positions (swipe line, heart row, favourite star) are calibrated for a **1080 × 2340** screen;
+  other resolutions may need adjustments in `tools/capture_adb.py` and `tools/parse_captures.py`.
+
+## Usage
+
+Double-click **`pikmin.bat`** (or run `py tools/pikmin.py`) for the interactive menu:
+
+| Option | What it does |
 |---|---|
-| 1 Komplettes Update | geführt: Scan → Gruppe → Auswerten → Einzelkarten → Übernehmen → Veröffentlichen |
-| 2–5 | Scan, Fortsetzen nach Abbruch, Gruppe anhängen, Einzelkarte neu aufnehmen |
-| 6 | Auswerten + Abgleich mit dem Herbarium (Bericht prüfen) |
-| 7 | Übernehmen (Sicherung `data/pikmin.tsv.bak`) + Seite bauen |
-| 8 | Veröffentlichen: lädt `web/index.html` + `web/thumbs.jpg` auf den Server |
+| 1 Full update | guided: scan → group → parse → re-take single cards → apply → publish |
+| 2–5 | scan, resume after an interruption, append the Pikmin of a group, re-take the open card |
+| 6 | parse the scan and compare it with the collection (review the report) |
+| 7 | apply (backup `data/pikmin.tsv.bak`) and build the page |
+| 8 | publish `web/index.html` + `web/thumbs.jpg` to your server |
 
-Vorbereitung am Handy: USB-Debugging an, per USB verbunden, „Nicht stören“ an, Pikmin-Liste
-**nach Deko sortiert**, erstes Pikmin außerhalb der Gruppe geöffnet.
+Before scanning: phone connected via USB, *Do not disturb* on, the Pikmin list **sorted by decor**
+(needed to tell the sticker motifs and park sets apart), the first Pikmin **outside** a group opened.
+Pikmin in a group are a separate list – append them with option 4.
 
-## Ablauf der Skripte (`tools/`)
+## Your own settings (not in the repo)
 
-1. `capture_adb.py` – blättert per ADB durch die Detailansichten, prüft jede Karte (lesbar, nicht
-   abgedunkelt), speichert `captures/<Datum_Zeit>/NNN.png` + `log.jsonl`
-   (`--resume`, `--single`, `--test`)
-2. `parse_captures.py` – OCR-Zeilen → `parsed.tsv` (Herzen und Favoriten-Stern per Pixel,
-   Sticker-Motive und Park-Sets aus der Farbreihenfolge der Liste)
-3. `diff_capture.py` – ordnet die Karten dem Herbarium zu (Farbe + Funddatum + Ort), Bericht
-4. `apply_capture.py` – schreibt `data/pikmin.tsv`, schneidet alle Porträts neu (`web/thumbs.jpg`)
+| File | Content |
+|---|---|
+| `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"`) |
+| `publish.local.json` | server URL and upload token, see `publish.example.json` |
+
+Everything you collect – `captures/`, `data/`, the built page – stays local and is ignored by git,
+because it contains where your Pikmin were found.
+
+## Pipeline (`tools/`)
+
+1. `capture_adb.py` – pages through the detail views over ADB, checks every card (readable, not
+   dimmed), stores `captures/<date_time>/NNN.png` + `log.jsonl` (`--resume`, `--single`, `--test`)
+2. `parse_captures.py` – OCR lines → `parsed.tsv`; hearts, gold hearts and the favourite star are
+   read from pixels; sticker motifs and park sets from the colour order of the list
+3. `diff_capture.py` – matches the cards to the collection (colour + discovery date + place), report
+4. `apply_capture.py` – writes `data/pikmin.tsv` and recuts all portraits (`web/thumbs.jpg`)
 5. `build_page.py` – `data/pikmin.tsv` → `data/pikmin.json`, `data/pikmin.csv`, `web/index.html`
-6. `publish.py` – Upload auf den Server
+6. `publish.py` – uploads the page to the server
 
-Gesammelte Daten (`captures/`, `data/`, gebaute Seite) bleiben lokal und sind nicht im Repo –
-sie enthalten, wo die Pikmin gefunden wurden.
+`extract_frames.py`, `make_sheets.py` and `make_thumbs.py` belong to the older workflow that read a
+screen recording instead of using ADB.
+
+Game data such as available colours per decor, rare variants and the attack power formula comes
+from the [Pikmin Wiki](https://www.pikminwiki.com/Decor_Pikmin) ([mushroom battle](https://www.pikminwiki.com/Mushroom_battle)).
 
 ## Server
 
-Kleiner Python-Server (`server/app.py`, nur Standardbibliothek) im Docker-Image
+A small Python server (`server/app.py`, standard library only), published as Docker image
 `ghcr.io/flyingfinger1/pikminsammlung`:
 
-- `GET /` – Seite; öffentlich, außer `VIEW_USER` + `VIEW_PASSWORD` sind gesetzt (dann Basic Auth).
-  Antwortet mit `X-Robots-Tag: noindex`, damit Suchmaschinen die Seite nicht aufnehmen
-- `PUT /api/files/index.html|thumbs.jpg` – Upload mit `Authorization: Bearer <UPLOAD_TOKEN>`;
-  atomar geschrieben, vorherige Version bleibt als `<name>.prev` im Volume
-- `GET /health` – ohne Login, für den Healthcheck
+- `GET /` – the page; public unless `VIEW_USER` and `VIEW_PASSWORD` are set (then Basic Auth).
+  Responses carry `X-Robots-Tag: noindex` so search engines do not list the page
+- `PUT /api/files/index.html|thumbs.jpg` – upload with `Authorization: Bearer <UPLOAD_TOKEN>`,
+  written atomically; the previous version stays as `<name>.prev` in the volume
+- `GET /health` – no login, used by the health check
 
-Das Image enthält keine Daten; die Seite liegt im Volume `pikmin-data`, Updates brauchen daher
-keinen neuen Build. Ein neues Image entsteht nur bei einem GitHub-Release (`.github/workflows/release.yml`).
+The image contains no data; the page lives in the volume `pikmin-data`. A new image is only built
+for a GitHub release (`.github/workflows/release.yml`).
 
 ### Deployment
 
-Auf dem Server neben `docker-compose.yml` eine `.env` nach `.env.example` anlegen, dann:
+`docker-compose.yml` expects the external network `caddy-net` of
+[caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy); set your domain in the
+`caddy` label, or remove the labels and network and use the port mapping instead. Next to it create
+a `.env` from `.env.example` with a long random `UPLOAD_TOKEN`, then:
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-### Lokale Konfiguration zum Veröffentlichen
-
-`publish.local.json` im Projektordner (nicht im Repo):
-
-```json
-{"url": "https://pikmin-sammlung.flyingfinger.de", "token": "<UPLOAD_TOKEN des Servers>"}
-```
+Put the same token into `publish.local.json` and publish from the menu (option 8).

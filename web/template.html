@@ -496,7 +496,8 @@ const available = (k, n) => {
   return only ? only.includes(n) : !(n === "Eis" && noEis(k));
 };
 // rare sets whose slots are unlocked in-game even without a find yet
-const RARE_UNLOCKED = ["Eichelhut (Selten)", "Hirschkäfer (Selten)"];
+// rare sets unlocked in the in-game collection (config.local.json "rare_unlocked")
+const RARE_UNLOCKED = (DATA.config && DATA.config.rareUnlocked) || [];
 // normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026). German names still
 // unknown and therefore missing: Toothbrush (Apotheke), Ball Keychain (Stadion)
 const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Hirschkäfer", "Eichelhut", "Köder", "Ticket",

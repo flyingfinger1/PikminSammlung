@@ -31,7 +31,9 @@ BASE = re.compile(r"^(.+?-\s?Pikmin \([^)]+\)|(?:Rotes|Gelbes|Blaues|Lila|Weiße
 STEPS = re.compile(r"(\d{1,3}(?:\.\d{3})*)Schritte")  # fullmatch on the space-free line
 ROOT = Path(__file__).resolve().parent.parent
 # categories from the in-game decor collection (Sep 2026) plus whatever the data already has
-KNOWN_SPOTS = sorted({p["spot"] for p in json.loads((ROOT / "data/pikmin.json").read_text(encoding="utf-8"))} | {
+_DATA = ROOT / "data/pikmin.json"
+_SEEN_SPOTS = {p["spot"] for p in json.loads(_DATA.read_text(encoding="utf-8"))} if _DATA.exists() else set()
+KNOWN_SPOTS = sorted(_SEEN_SPOTS | {
     "Restaurant", "Café", "Süßwarenladen", "Kino", "Apotheke", "Zoo", "Wald", "Am Wasser", "Post",
     "Kunstmuseum", "Flughafen", "Bahnhof", "Strand", "Burger-Bistro", "Eckladen", "Supermarkt",
     "Bäckerei", "Friseur", "Boutique", "Park", "Bibliothek/Bücherladen", "Straße", "Sushi-Restaurant",
