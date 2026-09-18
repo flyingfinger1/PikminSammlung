@@ -206,21 +206,22 @@ def readable(lines, height):
 
 
 def card_key(lines, height):
-    """Name, steps and discovery date of a card - the floating egg button over the location
-    text changes the image of an unchanged card, but not these lines."""
-    return tuple(t for y, t in lines if height * CARD_TOP < y < SCROLLED_Y
-                 and (is_name(t) or LANG["steps"] in t or LANG["discovered"] in t))
-
-
-def card_digits(key):
-    """Digits of steps and discovery date - what tells twin cards apart."""
-    return re.sub(r"\D", "", " ".join(t for t in key if LANG["steps"] in t or LANG["discovered"] in t))
+    """The text of a card: every line, cut to its first 20 letters and digits. Twins - same type,
+    decor and day - differ only in the steps or the place (seedlings all show "1.000 Schritte"),
+    while the floating egg button hides no more than the end of a line and adds its counter."""
+    key = []
+    for y, t in sorted(lines):
+        if height * CARD_TOP < y < SCROLLED_Y and not re.fullmatch(r"\d{1,3}", t.strip()):
+            text = re.sub(r"[^0-9a-zäöüß]", "", t.lower())[:20]
+            if text:
+                key.append(text)
+    return tuple(key)
 
 
 def same_card(img, sig, key, out_dir):
-    """Does img still show the card with this signature and text? Twins - same type, decor,
-    place and day, e.g. red Sticker Pikmin from one street - look alike down to a few step
-    digits, so when the images match, the steps and date read from the screen decide."""
+    """Does img still show the card with this signature and text? Twins look alike down to a
+    few step digits or a street name, so when the images match, the text read from the screen
+    decides."""
     if not same(signature(img), sig):
         return False
     if not key:
@@ -229,7 +230,7 @@ def same_card(img, sig, key, out_dir):
     img.save(path)
     lines = ocr(path)
     path.unlink()
-    return card_digits(card_key(lines, img.height)) == card_digits(key)
+    return card_key(lines, img.height) == key
 
 
 def swipe():
@@ -343,7 +344,7 @@ def _run(out_dir, start_n, test=False):
             return
         base = sig.mean() if base is None else base
         key = card_key(lines, img.height)
-        repeat = next((i for i, s in seen if same(s, sig) and card_digits(seen_keys[i]) == card_digits(key)), None)
+        repeat = next((i for i, s in seen if same(s, sig) and seen_keys[i] == key), None)
         if repeat is None and seen and key and key == seen_keys.get(seen[-1][0]):
             repeat = seen[-1][0]  # same text; only the floating egg button changed the image
         if repeat is not None:
