@@ -69,7 +69,8 @@ def main():
                 is_coords(o["location"]) or sim(n["location"], o["location"]) < 0.8):
             o["location"] = n["location"]
         o["seen"] = seen
-        o["motif"] = n.get("variant", "")
+        # a Pikmin never changes its set: keep the known one when the scan could not tell
+        o["motif"] = n.get("variant") or o.get("motif", "")
         o["goldhearts"] = n.get("gold_hearts", "")
         source[o["frame"]] = int(n["n"])
 

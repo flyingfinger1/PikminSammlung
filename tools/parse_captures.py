@@ -324,17 +324,20 @@ MULTI_SETS = {
 }
 
 
-def assign_variants(rows):
+def assign_variants(rows, unplaced=()):
     """The in-game list sorted by decor keeps every set together, colours ascending: first
     Pikmin with decor, then those without, again per set. A restart of the colour order
     starts the next set. Sets are only numbered when the block count equals the known number
     of sets - otherwise a set starting with a later colour than the previous one ended with
-    could have merged unnoticed, e.g. when there are only few Pikmin."""
+    could have merged unnoticed, e.g. when there are only few Pikmin. Cards in `unplaced`
+    (appended by a single re-take) have no place in the list and get no set."""
     blocks = {}
     prev_key, prev_idx, block = None, -1, 0
     for r in sorted(rows, key=lambda r: r["n"]):
         r["variant"] = ""
         key = ("decor", r["decor"]) if r["decor"] else ("plain", r["spot"], r["spot_decor"])
+        if r["n"] in unplaced:
+            continue  # not part of the list order: neither a set of its own nor a break
         if key not in MULTI_SETS or r["group"] == 1:
             prev_key = None
             continue
@@ -361,7 +364,11 @@ def main():
     run = Path(sys.argv[1])
     recs = [json.loads(l) for l in (run / "log.jsonl").open(encoding="utf-8")]
     rows = [parse_card(run, r) for r in recs]
-    assign_variants(rows)
+    scanned = [r["n"] for r in recs if r.get("source") != "single"]
+    # a single re-take appended behind the scanned cards (older logs have no "appended" flag)
+    unplaced = {r["n"] for r in recs if r.get("appended")
+                or (r.get("source") == "single" and r["n"] > max(scanned, default=0))}
+    assign_variants(rows, unplaced)
     with (run / "parsed.tsv").open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=rows[0].keys(), delimiter="\t", lineterminator="\n")
         w.writeheader()

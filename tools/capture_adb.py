@@ -428,6 +428,7 @@ def single(run_dir):
         if src.exists():
             src.rename(dst)
     recs = [r for r in recs if r["n"] not in (n, tmp)] + [{"n": n, "lines": lines, "source": "single",
+                                                          "appended": not target,
                                                           "device": list(DEVICE), "lang": code}]
     recs.sort(key=lambda r: r["n"])
     with log_path.open("w", encoding="utf-8") as f:
