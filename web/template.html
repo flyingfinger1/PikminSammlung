@@ -180,6 +180,12 @@ h1 {
 .matrix-sum div { display: grid; }
 .matrix-sum dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .matrix-sum dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+.matrix-sum .points dd { display: flex; align-items: baseline; gap: 8px; }
+.matrix-sum .points small { font-family: var(--body); font-weight: 400; font-size: 13px; color: var(--muted); }
+#points-btn {
+  font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px;
+}
 .matrix tfoot th, .matrix tfoot td { border-top: 2px solid var(--line); border-bottom: 0; }
 .matrix tfoot th { text-align: left; padding: 10px 14px; font-weight: 700; }
 .matrix tfoot th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
@@ -347,7 +353,7 @@ function syncChips() {
   document.querySelectorAll("#colors .chip").forEach(b => b.setAttribute("aria-pressed", state.colors.has(b.dataset.color)));
 }
 function resetFilters() {
-  Object.assign(state, { q: "", decor: "", fav: false, cand: null });
+  Object.assign(state, { q: "", decor: "", fav: false, cand: null, points: false });
   state.colors.clear();
   $("q").value = ""; $("decor").value = ""; $("fav").setAttribute("aria-pressed", "false");
   syncChips(); render();
@@ -402,7 +408,8 @@ function card(p) {
 }
 function filtered() {
   const q = state.q;
-  let list = state.cand ? candidates(state.cand.decor, state.cand.color) : P.filter(p =>
+  let list = state.points ? pointCandidates()
+    : state.cand ? candidates(state.cand.decor, state.cand.color) : P.filter(p =>
     (!state.colors.size || state.colors.has(p.color)) &&
     (!state.fav || p.fav) &&
     (state.decor === "" || (state.decor === "*" ? p.decor : state.decor === "-" ? !p.decor : p.decor === state.decor)) &&
@@ -440,6 +447,14 @@ function rareBadge(k, names) {
     return { cls: "has-rare", html: `<span class="rare-badge has" title="Zu dieser Deko gibt es eine seltene Variante">✦</span>` };
   return { cls: "", html: "" };
 }
+// places whose rare decor level is unlocked (their rare sets show up in the collection)
+function rareSpots() {
+  return new Set(RARE_UNLOCKED
+    .map(k => (P.find(p => p.decor === k || p.decor === baseOf(k) || p.spotDecor === baseOf(k)) || {}).spot)
+    .filter(Boolean));
+}
+// Pikmin without decor from those places: reaching L4 gives their decor and 200 decor points
+const pointCandidates = () => { const spots = rareSpots(); return P.filter(p => !p.decor && spots.has(p.spot)); };
 const candidates = (k, n) => baseOf(k)
   ? P.filter(p => p.decor === baseOf(k) && p.color === n)
   : P.filter(p => !p.decor && p.spotDecor === k && p.color === n);
@@ -497,29 +512,44 @@ function matrix() {
   const foot = `<tfoot><tr><th scope="row">Summe<small>offene Kandidaten gesamt</small></th>` +
     `<td colspan="8"></td><td class="total">${decorTotal}</td><td class="total open">${openNormal + openRare}</td></tr></tfoot>`;
   $("matrix").innerHTML = head + `<tbody>${body}</tbody>` + foot;
+  const pts = pointCandidates().length;
   $("matrix-sum").innerHTML = [
     ["Offen · normale Deko", openNormal],
     ["Offen · seltene Deko", openRare],
     ["Offen · gesamt", openNormal + openRare]
-  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("") +
+    `<div class="points"><dt>L4 für Dekor-Punkte</dt><dd><button id="points-btn" type="button" ` +
+    `title="Pikmin ohne Deko aus Orten mit freigeschalteter seltener Deko anzeigen">${pts}</button>` +
+    `<small>${esc([...rareSpots()].join(", ") || "keine Orte")} · je 200 Punkte = ${fmt(pts * 200)}</small></dd></div>`;
 }
 
 function render() {
   const list = filtered();
-  const active = state.q || state.colors.size || state.decor || state.fav || state.cand;
-  const label = state.cand
+  const active = state.q || state.colors.size || state.decor || state.fav || state.cand || state.points;
+  const label = state.points
+    ? `${list.length} Pikmin für je 200 Dekor-Punkte (${esc([...rareSpots()].join(", "))})`
+    : state.cand
     ? `${list.length} Kandidat${list.length > 1 ? "en" : ""} für ${esc(state.cand.decor)} · ${state.cand.color}`
     : `${list.length} von ${P.length}`;
   $("shown").innerHTML = label + (active ? ` <button class="reset">Zurücksetzen</button>` : "");
   if (state.view === "grid") {
     hid = 0;
-    $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">Kein Pikmin passt zu diesen Filtern.</p>`;
+    $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">${state.points
+      ? "Keins – alle Pikmin aus Orten mit freigeschalteter seltener Deko haben ihre Deko schon. Neue Punkte gibt es hier nur über neue Keime von dort."
+      : "Kein Pikmin passt zu diesen Filtern."}</p>`;
   }
 }
 
 masthead();
 controls();
 matrix();
+$("matrix-sum").addEventListener("click", e => {
+  if (!e.target.closest("#points-btn")) return;
+  resetFilters();
+  state.points = true;
+  setView("grid");
+  window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+});
 $("matrix").addEventListener("click", e => {
   const b = e.target.closest("button.has, button.cand"); if (!b) return;
   resetFilters();
