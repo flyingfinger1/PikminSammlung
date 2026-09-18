@@ -5,9 +5,13 @@ Usage: py tools/build_page.py
 import csv
 import json
 import re
+import sys
 from pathlib import Path
 
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).parent))
+from lang import ENGLISH  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SPRITE_COLS = 20  # must match make_thumbs.py
@@ -42,6 +46,18 @@ def load_config():
     """Settings of this collection, kept out of the repo (template: config.example.json)."""
     path = ROOT / "config.local.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def english_names():
+    """German game names -> English ones for the page; the first English spelling wins (the
+    tables list the spelling of the card first)."""
+    out = {}
+    for kind in ("decor", "spots"):
+        rev = {}
+        for en, de in ENGLISH[kind].items():
+            rev.setdefault(de, en)
+        out[kind] = rev
+    return out
 
 
 def set_order():
@@ -127,8 +143,9 @@ def main():
             "missing": 0}
     order = {"spots": CATEGORY_ORDER, "sets": set_order()}
     cfg = load_config()
-    config = {"rareUnlocked": cfg.get("rare_unlocked", [])}
-    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config}, ensure_ascii=False)
+    config = {"rareUnlocked": cfg.get("rare_unlocked", []), "language": cfg.get("language")}
+    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config,
+                          "names": {"en": english_names()}}, ensure_ascii=False)
     template = (ROOT / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")

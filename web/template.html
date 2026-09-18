@@ -257,42 +257,52 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
   .name { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.mast-side { display: grid; justify-items: end; gap: 10px; }
+.lang { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.lang button { border: 0; background: none; padding: 2px 10px; border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+.lang button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
 </style>
 
 <div class="wrap">
   <header class="mast">
     <div class="mast-top">
       <div>
-        <p class="eyebrow">Pikmin Bloom · Stand <span id="stand"></span></p>
-        <h1>Pikmin-Herbarium</h1>
+        <p class="eyebrow">Pikmin Bloom · <span data-t="asOf"></span> <span id="stand"></span></p>
+        <h1 data-t="title"></h1>
       </div>
-      <div class="count"><b id="total">0</b><span>Pikmin erfasst, sortiert wie in der Spielliste</span></div>
+      <div class="mast-side">
+        <div class="lang" id="lang" role="group" aria-label="Sprache / Language">
+          <button type="button" data-lang="de" lang="de">DE</button>
+          <button type="button" data-lang="en" lang="en">EN</button>
+        </div>
+        <div class="count"><b id="total">0</b><span data-t="count"></span></div>
+      </div>
     </div>
     <div>
-      <div class="spectrum" id="spectrum" aria-label="Verteilung nach Farbe"></div>
+      <div class="spectrum" id="spectrum" data-t-aria="spectrum"></div>
       <ul class="legend" id="legend"></ul>
     </div>
     <dl class="stats" id="stats"></dl>
     <p class="note" id="note"></p>
   </header>
 
-  <nav class="bar" aria-label="Ansicht und Filter">
+  <nav class="bar" data-t-aria="nav">
     <div class="bar-inner">
       <div class="tabs" role="tablist">
-        <button id="tab-grid" role="tab" aria-selected="true">Belege</button>
-        <button id="tab-matrix" role="tab" aria-selected="false">Deko-Matrix</button>
-        <button id="tab-pilze" role="tab" aria-selected="false">Pilzkampf</button>
+        <button id="tab-grid" role="tab" aria-selected="true" data-t="tabGrid"></button>
+        <button id="tab-matrix" role="tab" aria-selected="false" data-t="tabMatrix"></button>
+        <button id="tab-pilze" role="tab" aria-selected="false" data-t="tabPilze"></button>
       </div>
-      <label class="search"><input id="q" type="search" placeholder="Name, Ort, Deko …" aria-label="Suche"></label>
-      <select id="decor" aria-label="Deko"></select>
-      <select id="sort" aria-label="Sortierung">
-        <option value="rank">Freundschaft</option>
-        <option value="steps">Meiste Schritte</option>
-        <option value="new">Zuletzt entdeckt</option>
-        <option value="old">Zuerst entdeckt</option>
-        <option value="name">Name</option>
+      <label class="search"><input id="q" type="search" data-t-ph="searchPh" data-t-aria="search"></label>
+      <select id="decor" data-t-aria="decorSel"></select>
+      <select id="sort" data-t-aria="sortSel">
+        <option value="rank" data-t="sortRank"></option>
+        <option value="steps" data-t="sortSteps"></option>
+        <option value="new" data-t="sortNew"></option>
+        <option value="old" data-t="sortOld"></option>
+        <option value="name" data-t="sortName"></option>
       </select>
-      <button class="chip fav-toggle" id="fav" aria-pressed="false">★ Favoriten</button>
+      <button class="chip fav-toggle" id="fav" aria-pressed="false" data-t="favs"></button>
       <div class="chips" id="colors"></div>
       <span class="shown" id="shown"></span>
     </div>
@@ -301,28 +311,21 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
   <main>
     <section id="view-grid"><div class="grid" id="grid"></div></section>
     <section id="view-pilze" hidden>
-      <p class="pilze-intro">Gesamtstärke der <strong>40 stärksten Pikmin</strong> je Pilz, wenn alle dasselbe auf dem Kopf haben.
-        Ein Klick auf eine Zahl zeigt, welche Pikmin angreifen würden.</p>
+      <p class="pilze-intro" data-t-html="pilzeIntro"></p>
       <div class="event-cfg" id="event-cfg"></div>
       <div class="matrix-wrap"><table class="matrix pilze" id="pilze"></table></div>
       <div id="squad" class="squad-wrap"></div>
-      <p class="matrix-note">Berechnung laut Pikmin-Wiki (Pilzkampf, Angriffsstärke seit Dez. 2022), je Pikmin:
-        Grundwert der Farbe (Rot 4, Gelb 3, Blau 3, Lila 6, Weiß 2, Flügel 2, Fels 5, Eis 2)
-        + 4 für Deko-Pikmin + Kopf (nichts 0, Blatt 1, Blume 3, Saison-/Eventblume 4, Blume des Monats 5)
-        + Freundschaft (volle Herzen 0–4, volle Goldherzen 8/12/16/20) + Farbe gegen Pilz (gleiche Farbe 12, sonst 0 oder 3).
-        Elementpilze greift nur eine Farbe an (+100). Deko-Event (oben wählbar): primäre Deko +300, sekundäre +100 am Event-Pilz,
-        +15 an allen anderen Pilzen; seltene Deko und Sticker-Motive zählen zu ihrer Grund-Deko.
-        Herzen und Deko: Stand des letzten Scans.</p>
+      <p class="matrix-note" data-t-html="pilzeNote"></p>
     </section>
     <section id="view-matrix" hidden>
       <dl class="matrix-sum" id="matrix-sum"></dl>
       <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
       <ul class="matrix-legend">
-        <li><span class="rare-badge rare">✦ selten</span> seltene Deko</li>
-        <li><span class="rare-badge has">✦</span> zu dieser Deko gibt es eine seltene Variante</li>
-        <li>ohne Zeichen: keine seltene Variante (laut Pikmin-Wiki)</li>
+        <li><span class="rare-badge rare" data-t="rare"></span> <span data-t="legendRare"></span></li>
+        <li><span class="rare-badge has">✦</span> <span data-t="legendHas"></span></li>
+        <li data-t="legendNone"></li>
       </ul>
-      <p class="matrix-note">„Offen“ = fehlende Farben, für die schon ein passendes Pikmin da ist (Spalte „Kandidaten“). Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
+      <p class="matrix-note" data-t-html="matrixNote"></p>
     </section>
   </main>
 </div>
@@ -330,6 +333,127 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
 <script>
 const DATA = /*DATA*/null;
 const P = DATA.pikmin, S = DATA.sprite;
+
+/* ---- language: ?lang= > choice kept in this browser > config.local.json "language" > browser ---- */
+const UI_LANGS = ["de", "en"], LANG_KEY = "pikmin-lang";
+function pickLang() {
+  const q = new URLSearchParams(location.search).get("lang");
+  if (UI_LANGS.includes(q)) return q;
+  try { const s = localStorage.getItem(LANG_KEY); if (UI_LANGS.includes(s)) return s; } catch (e) { /* no storage */ }
+  const c = DATA.config && DATA.config.language;
+  if (UI_LANGS.includes(c)) return c;
+  return (navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en";
+}
+const L = pickLang();
+const T = {
+  de: {
+    title: "Pikmin-Herbarium", asOf: "Stand", unknown: "unbekannt",
+    count: "Pikmin erfasst, sortiert wie in der Spielliste",
+    spectrum: "Verteilung nach Farbe", onlyColor: n => `Nur ${n} zeigen`, nav: "Ansicht und Filter",
+    tabGrid: "Belege", tabMatrix: "Deko-Matrix", tabPilze: "Pilzkampf",
+    search: "Suche", searchPh: "Name, Ort, Deko …", decorSel: "Deko", sortSel: "Sortierung",
+    sortRank: "Freundschaft", sortSteps: "Meiste Schritte", sortNew: "Zuletzt entdeckt",
+    sortOld: "Zuerst entdeckt", sortName: "Name", favs: "★ Favoriten",
+    stats: ["Deko-Pikmin", "Deko-Arten", "Deko × Farbe", "Mit Gold-Herz", "Favoriten", "Schritte gesamt"],
+    first: d => `Erstes Pikmin am ${d}`,
+    missing: n => `<strong>${n} Pikmin fehlt noch</strong> und wird nachgetragen.`,
+    complete: "Sammlung vollständig erfasst.",
+    allPikmin: "Alle Pikmin", onlyDecor: "Nur Deko-Pikmin", noDecor: "Ohne Deko",
+    heartsGold: "4 Herzen, Gold-Fortschritt", heartsOf: h => `${h} von 4 Herzen`,
+    plain: "ohne Deko", fav: "Favorit", steps: "Schritte", found: d => `entdeckt ${d}`,
+    mDecor: "Deko", mCand: "Kandidaten", mCandTitle: "Fehlende Farben, für die schon ein passendes Pikmin da ist",
+    naTitle: "Gibt es im Spiel nicht", allMotifs: "Alle Motive haben diese Farbe",
+    candTitle: c => `${c} Kandidat${c > 1 ? "en" : ""} ohne Deko`,
+    candAria: (k, n, c) => `${k} ${n}: fehlt, ${c} Kandidaten`, noneAria: (k, n) => `${k} ${n}: keins`,
+    subSplit: "Kandidaten, Motiv noch offen", subHave: (h, s) => `${h} von ${s} Farben`,
+    rare: "✦ selten", rareTitle: "Seltene Deko", hasRareTitle: "Zu dieser Deko gibt es eine seltene Variante",
+    sum: "Summe", sumSub: "offene Kandidaten gesamt",
+    openNormal: "Offen · normale Deko", openRare: "Offen · seltene Deko", openAll: "Offen · gesamt",
+    points: "L4 für Dekor-Punkte", pointsTitle: "Pikmin ohne Deko aus Orten mit freigeschalteter seltener Deko anzeigen",
+    noPlaces: "keine Orte", perPoints: x => `je 200 Punkte = ${x}`,
+    pointsLabel: (n, s) => `${n} Pikmin für je 200 Dekor-Punkte (${s})`,
+    candLabel: (n, k, c) => `${n} Kandidat${n > 1 ? "en" : ""} für ${k} · ${c}`,
+    ofTotal: (n, t) => `${n} von ${t}`, reset: "Zurücksetzen",
+    emptyPoints: "Keins – alle Pikmin aus Orten mit freigeschalteter seltener Deko haben ihre Deko schon. Neue Punkte gibt es hier nur über neue Keime von dort.",
+    empty: "Kein Pikmin passt zu diesen Filtern.",
+    legendRare: "seltene Deko", legendHas: "zu dieser Deko gibt es eine seltene Variante",
+    legendNone: "ohne Zeichen: keine seltene Variante (laut Pikmin-Wiki)",
+    matrixNote: "„Offen“ = fehlende Farben, für die schon ein passendes Pikmin da ist (Spalte „Kandidaten“). Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.",
+    pilzeIntro: "Gesamtstärke der <strong>40 stärksten Pikmin</strong> je Pilz, wenn alle dasselbe auf dem Kopf haben. Ein Klick auf eine Zahl zeigt, welche Pikmin angreifen würden.",
+    pilzeNote: "Berechnung laut Pikmin-Wiki (Pilzkampf, Angriffsstärke seit Dez. 2022), je Pikmin: Grundwert der Farbe (Rot 4, Gelb 3, Blau 3, Lila 6, Weiß 2, Flügel 2, Fels 5, Eis 2) + 4 für Deko-Pikmin + Kopf (nichts 0, Blatt 1, Blume 3, Saison-/Eventblume 4, Blume des Monats 5) + Freundschaft (volle Herzen 0–4, volle Goldherzen 8/12/16/20) + Farbe gegen Pilz (gleiche Farbe 12, sonst 0 oder 3). Elementpilze greift nur eine Farbe an (+100). Deko-Event (oben wählbar): primäre Deko +300, sekundäre +100 am Event-Pilz, +15 an allen anderen Pilzen; seltene Deko und Sticker-Motive zählen zu ihrer Grund-Deko. Herzen und Deko: Stand des letzten Scans.",
+    heads: ["Nichts", "Blatt", "Blume", "Saison-/Eventblume", "Blume des Monats"],
+    mushrooms: ["Roter Pilz", "Gelber Pilz", "Blauer Pilz", "Lila Pilz", "Weißer Pilz", "Rosa Pilz", "Grauer Pilz",
+      "Eisblauer Pilz", "Feuerpilz", "Strompilz", "Wasserpilz", "Giftpilz", "Kristallpilz", "Event-Pilz"],
+    colPilz: "Pilz", nPikmin: n => `${n} Pikmin`,
+    eventTitle: "Deko-Event", eventActive: (p, s) => `aktiv: ${p} primär, ${s} sekundär`, eventNone: "kein Event gewählt",
+    eventHelp: `Deko antippen: 1× <b class="ev primary">primär</b> (+300 am Event-Pilz), 2× <b class="ev secondary">sekundär</b> (+100), 3× aus. Andere Pilze: +15.`,
+    goldHearts: n => `${n}× Goldherz`, heartsN: n => `${n} ${n === 1 ? "Herz" : "Herzen"}`,
+    calcTitle: ev => `Grundwert + Deko + Kopf + Freundschaft + Pilz${ev ? " + Event" : ""}`
+  },
+  en: {
+    title: "Pikmin Herbarium", asOf: "as of", unknown: "unknown",
+    count: "Pikmin recorded, sorted like the in-game list",
+    spectrum: "Pikmin by type", onlyColor: n => `Show only ${n}`, nav: "View and filters",
+    tabGrid: "Pikmin", tabMatrix: "Decor matrix", tabPilze: "Mushroom battle",
+    search: "Search", searchPh: "Name, place, decor …", decorSel: "Decor", sortSel: "Sort order",
+    sortRank: "Friendship", sortSteps: "Most steps", sortNew: "Newest first",
+    sortOld: "Oldest first", sortName: "Name", favs: "★ Favorites",
+    stats: ["Decor Pikmin", "Decor types", "Decor × type", "With gold heart", "Favorites", "Total steps"],
+    first: d => `First Pikmin on ${d}`,
+    missing: n => `<strong>${n} Pikmin still missing</strong>, will be added.`,
+    complete: "Collection fully recorded.",
+    allPikmin: "All Pikmin", onlyDecor: "Decor Pikmin only", noDecor: "Without decor",
+    heartsGold: "4 hearts, gold in progress", heartsOf: h => `${h} of 4 hearts`,
+    plain: "no decor", fav: "Favorite", steps: "steps", found: d => `discovered ${d}`,
+    mDecor: "Decor", mCand: "Candidates", mCandTitle: "Missing types for which a fitting Pikmin already exists",
+    naTitle: "Does not exist in the game", allMotifs: "All motifs have this type",
+    candTitle: c => `${c} candidate${c > 1 ? "s" : ""} without decor`,
+    candAria: (k, n, c) => `${k} ${n}: missing, ${c} candidates`, noneAria: (k, n) => `${k} ${n}: none`,
+    subSplit: "Candidates, motif still open", subHave: (h, s) => `${h} of ${s} types`,
+    rare: "✦ rare", rareTitle: "Rare decor", hasRareTitle: "This decor has a rare variant",
+    sum: "Total", sumSub: "open candidates in all",
+    openNormal: "Open · normal decor", openRare: "Open · rare decor", openAll: "Open · total",
+    points: "L4 for decor points", pointsTitle: "Show Pikmin without decor from places with unlocked rare decor",
+    noPlaces: "no places", perPoints: x => `200 points each = ${x}`,
+    pointsLabel: (n, s) => `${n} Pikmin worth 200 decor points each (${s})`,
+    candLabel: (n, k, c) => `${n} candidate${n > 1 ? "s" : ""} for ${k} · ${c}`,
+    ofTotal: (n, t) => `${n} of ${t}`, reset: "Reset",
+    emptyPoints: "None – every Pikmin from places with unlocked rare decor already has its decor. New points here only come from new seedlings found there.",
+    empty: "No Pikmin matches these filters.",
+    legendRare: "rare decor", legendHas: "this decor has a rare variant",
+    legendNone: "no mark: no rare variant (according to the Pikmin Wiki)",
+    matrixNote: "“Open” = missing types for which a fitting Pikmin already exists (column “Candidates”). Same order as the in-game decor collection. Numbers = Decor Pikmin per decor and type. ○ = still missing, but a candidate exists: for normal decor a Pikmin without decor from this kind of place in this type, for rare decor a Pikmin with the normal decor in this type. Click a cell to see the matching Pikmin. “–” = this type does not exist for the decor (older sets without Ice Pikmin). The game counts Sticker as three motifs, but their names do not tell them apart.",
+    pilzeIntro: "Total attack power of the <strong>40 strongest Pikmin</strong> for each mushroom, if all of them wear the same on their head. Click a number to see which Pikmin would attack.",
+    pilzeNote: "Calculated as described in the Pikmin Wiki (mushroom battle, attack power since Dec 2022), per Pikmin: base value of the type (Red 4, Yellow 3, Blue 3, Purple 6, White 2, Winged 2, Rock 5, Ice 2) + 4 for Decor Pikmin + head (bare 0, leaf 1, flower 3, seasonal/event flower 4, flower of the month 5) + friendship (full hearts 0–4, full gold hearts 8/12/16/20) + type against mushroom (same colour 12, otherwise 0 or 3). Elemental mushrooms can only be attacked by one type (+100). Decor event (choose above): primary decor +300, secondary +100 on the event mushroom, +15 on all other mushrooms; rare decor and sticker motifs count as their base decor. Hearts and decor: as of the last scan.",
+    heads: ["Bare", "Leaf", "Flower", "Seasonal/event flower", "Flower of the Month"],
+    mushrooms: ["Red Mushroom", "Yellow Mushroom", "Blue Mushroom", "Purple Mushroom", "White Mushroom", "Pink Mushroom",
+      "Gray Mushroom", "Ice Blue Mushroom", "Fire Mushroom", "Electric Mushroom", "Water Mushroom",
+      "Poisonous Mushroom", "Crystal Mushroom", "Event Mushroom"],
+    colPilz: "Mushroom", nPikmin: n => `${n} Pikmin`,
+    eventTitle: "Decor event", eventActive: (p, s) => `active: ${p} primary, ${s} secondary`, eventNone: "no event chosen",
+    eventHelp: `Tap a decor: once = <b class="ev primary">primary</b> (+300 on the event mushroom), twice = <b class="ev secondary">secondary</b> (+100), three times = off. Other mushrooms: +15.`,
+    goldHearts: n => `${n}× gold heart`, heartsN: n => `${n} ${n === 1 ? "heart" : "hearts"}`,
+    calcTitle: ev => `Base + decor + head + friendship + mushroom${ev ? " + event" : ""}`
+  }
+}[L];
+
+/* ---- game names: the data keeps the German names, the page shows them in its language ---- */
+const NAMES_EN = (DATA.names && DATA.names.en) || { decor: {}, spots: {} };
+const COLOR_EN = { Rot: "Red", Gelb: "Yellow", Blau: "Blue", Lila: "Purple", Weiß: "White", Fels: "Rock", Flügel: "Winged", Eis: "Ice" };
+const MOTIF_EN = { grün: "green", blau: "blue", gelb: "yellow" };
+const RARE = " (Selten)";
+const tColor = n => L === "en" ? COLOR_EN[n] || n : n;
+const tSpot = s => L === "en" && s ? NAMES_EN.spots[s] || s : s;
+const tLoc = s => L === "en" && s && s.startsWith("In der Nähe: ") ? "near " + s.slice(13) : s;
+function tDecor(k) {
+  if (!k || L !== "en") return k;
+  const [d, motif] = k.split(" · ");
+  const rare = d.endsWith(RARE), base = rare ? d.slice(0, -RARE.length) : d;
+  return (NAMES_EN.decor[base] || base) + (rare ? " (Rare)" : "") + (motif ? " · " + (MOTIF_EN[motif] || motif) : "");
+}
+// name as the game shows it in that language ("Blue Baguette Pikmin")
+const pname = p => L === "en" ? `${tColor(p.color)} ${p.decor ? tDecor(p.decor.split(" · ")[0]) + " " : ""}Pikmin` : p.name;
+
 const COLORS = [
   ["Rot", "--c-rot"], ["Gelb", "--c-gelb"], ["Blau", "--c-blau"], ["Lila", "--c-lila"],
   ["Weiß", "--c-weiss"], ["Fels", "--c-fels"], ["Flügel", "--c-fluegel"], ["Eis", "--c-eis"]
@@ -345,39 +469,51 @@ const RARE_NO_EIS = new Set(["Kaffeetasse", "Köder", "Baguette", "Schere"]);
 const ONLY_COLORS = { "Uni-Wappen Aufnäher": ["Rot", "Gelb", "Blau"] };
 const cvar = Object.fromEntries(COLORS.map(([n, v]) => [n, `var(${v})`]));
 const $ = id => document.getElementById(id);
-const fmt = n => n.toLocaleString("de-DE");
+const LOCALE = L === "de" ? "de-DE" : "en-US";  // US dates like the game: "Sep 8, 2026"
+const fmt = n => n.toLocaleString(LOCALE);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const dateFmt = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" });
+const dateFmt = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", year: "numeric" });
 const showDate = d => dateFmt.format(new Date(d + "T12:00:00"));
 
 const state = { q: "", colors: new Set(), decor: "", fav: false, sort: "rank", view: "grid" };
 
+/* ---- static texts and language switch ---- */
+function texts() {
+  document.documentElement.lang = L;
+  document.title = T.title;
+  document.querySelectorAll("[data-t]").forEach(e => { e.textContent = T[e.dataset.t]; });
+  document.querySelectorAll("[data-t-html]").forEach(e => { e.innerHTML = T[e.dataset.tHtml]; });
+  document.querySelectorAll("[data-t-aria]").forEach(e => e.setAttribute("aria-label", T[e.dataset.tAria]));
+  document.querySelectorAll("[data-t-ph]").forEach(e => e.setAttribute("placeholder", T[e.dataset.tPh]));
+  document.querySelectorAll("#lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === L));
+  $("lang").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || b.dataset.lang === L) return;
+    try { localStorage.setItem(LANG_KEY, b.dataset.lang); } catch (err) { /* no storage: the URL keeps it */ }
+    const url = new URL(location.href);
+    url.searchParams.set("lang", b.dataset.lang);
+    location.replace(url);
+  });
+}
+
 /* ---- masthead ---- */
 function masthead() {
   const lastScan = P.reduce((a, p) => (p.seen || "") > a ? p.seen : a, "");
-  $("stand").textContent = lastScan ? showDate(lastScan) : "unbekannt";
+  $("stand").textContent = lastScan ? showDate(lastScan) : T.unknown;
   $("total").textContent = P.length;
   const byColor = COLORS.map(([n]) => [n, P.filter(p => p.color === n).length]);
   $("spectrum").innerHTML = byColor.filter(([, c]) => c).map(([n, c]) =>
-    `<button style="flex:${c};background:${cvar[n]}" title="${n}: ${c}" aria-label="Nur ${n} zeigen" data-color="${n}"></button>`).join("");
+    `<button style="flex:${c};background:${cvar[n]}" title="${tColor(n)}: ${c}" aria-label="${T.onlyColor(tColor(n))}" data-color="${n}"></button>`).join("");
   $("legend").innerHTML = byColor.map(([n, c]) =>
-    `<li><span class="dot" style="--c:${cvar[n]}"></span>${n} <b>${c}</b></li>`).join("");
+    `<li><span class="dot" style="--c:${cvar[n]}"></span>${tColor(n)} <b>${c}</b></li>`).join("");
   const decor = P.filter(p => p.decor);
   const kinds = new Set(decor.map(p => p.decor));
   const combos = new Set(decor.map(p => p.decor + "|" + p.color));
   const steps = P.reduce((a, p) => a + p.steps, 0);
   const best = P.filter(p => p.gold).length;
-  $("stats").innerHTML = [
-    ["Deko-Pikmin", decor.length],
-    ["Deko-Arten", kinds.size],
-    ["Deko × Farbe", combos.size],
-    ["Mit Gold-Herz", best],
-    ["Favoriten", P.filter(p => p.fav).length],
-    ["Schritte gesamt", fmt(steps)]
-  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+  const values = [decor.length, kinds.size, combos.size, best, P.filter(p => p.fav).length, fmt(steps)];
+  $("stats").innerHTML = T.stats.map((k, i) => `<div><dt>${k}</dt><dd>${values[i]}</dd></div>`).join("");
   const first = P.reduce((a, p) => p.date < a ? p.date : a, P[0].date);
-  $("note").innerHTML = `Erstes Pikmin am ${showDate(first)}` +
-    (S.missing ? ` · <strong>${S.missing} Pikmin fehlt noch</strong> und wird nachgetragen.` : ` · Sammlung vollständig erfasst.`);
+  $("note").innerHTML = T.first(showDate(first)) + " · " + (S.missing ? T.missing(S.missing) : T.complete);
   $("spectrum").addEventListener("click", e => {
     const c = e.target.dataset.color; if (!c) return;
     state.colors = new Set([c]); syncChips(); render();
@@ -387,16 +523,16 @@ function masthead() {
 /* ---- controls ---- */
 function controls() {
   $("colors").innerHTML = COLORS.map(([n]) =>
-    `<button class="chip" aria-pressed="false" data-color="${n}"><span class="dot" style="--c:${cvar[n]}"></span>${n}</button>`).join("");
+    `<button class="chip" aria-pressed="false" data-color="${n}"><span class="dot" style="--c:${cvar[n]}"></span>${tColor(n)}</button>`).join("");
   $("colors").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     const c = b.dataset.color;
     state.colors.has(c) ? state.colors.delete(c) : state.colors.add(c);
     syncChips(); render();
   });
-  const kinds = [...new Set(P.filter(p => p.decor).map(p => p.decor))].sort((a, b) => a.localeCompare(b, "de"));
-  $("decor").innerHTML = `<option value="">Alle Pikmin</option><option value="*">Nur Deko-Pikmin</option><option value="-">Ohne Deko</option>` +
-    kinds.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join("");
+  const kinds = [...new Set(P.filter(p => p.decor).map(p => p.decor))].sort((a, b) => tDecor(a).localeCompare(tDecor(b), L));
+  $("decor").innerHTML = `<option value="">${T.allPikmin}</option><option value="*">${T.onlyDecor}</option><option value="-">${T.noDecor}</option>` +
+    kinds.map(k => `<option value="${esc(k)}">${esc(tDecor(k))}</option>`).join("");
   $("q").addEventListener("input", e => { state.q = e.target.value.trim().toLowerCase(); render(); });
   $("decor").addEventListener("change", e => { state.decor = e.target.value; render(); });
   $("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
@@ -439,7 +575,7 @@ function hearts(p) {
     out += `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="${24 * fill}" height="24"/></clipPath></defs>` +
       `<path d="${HEART}" fill="var(--heart-empty)"/><path d="${HEART}" fill="${col}" clip-path="url(#${id})"/></svg>`;
   }
-  const label = p.gold ? "4 Herzen, Gold-Fortschritt" : `${p.hearts} von 4 Herzen`;
+  const label = p.gold ? T.heartsGold : T.heartsOf(p.hearts);
   return `<span class="hearts" title="${label}" aria-label="${label}">${out}</span>`;
 }
 function sprite(p) {
@@ -450,22 +586,25 @@ function sprite(p) {
 }
 function card(p) {
   const decorTag = p.decor
-    ? `<span class="tag decor">${esc(p.decor)}</span>`
-    : `<span class="tag plain">ohne Deko</span>`;
+    ? `<span class="tag decor">${esc(tDecor(p.decor))}</span>`
+    : `<span class="tag plain">${T.plain}</span>`;
   return `<article class="card">
     <div class="portrait" style="--c:${cvar[p.color]}">
       <i style="${sprite(p)}"></i>
       <span class="rank">#${p.rank}</span>
-      ${p.fav ? '<span class="star" title="Favorit">★</span>' : ""}
+      ${p.fav ? `<span class="star" title="${T.fav}">★</span>` : ""}
     </div>
     <div class="body">
-      <h2 class="name">${esc(p.name)}</h2>
-      <div class="meta"><span class="tag"><span class="dot" style="--c:${cvar[p.color]}"></span>${p.color}</span>${decorTag}</div>
-      <div class="row">${hearts(p)}<span class="steps">${fmt(p.steps)} Schritte</span></div>
-      <div class="where"><span>${esc(p.location)}</span><span>${esc(p.spot)} · entdeckt ${showDate(p.date)}</span></div>
+      <h2 class="name">${esc(pname(p))}</h2>
+      <div class="meta"><span class="tag"><span class="dot" style="--c:${cvar[p.color]}"></span>${tColor(p.color)}</span>${decorTag}</div>
+      <div class="row">${hearts(p)}<span class="steps">${fmt(p.steps)} ${T.steps}</span></div>
+      <div class="where"><span>${esc(tLoc(p.location))}</span><span>${esc(tSpot(p.spot))} · ${T.found(showDate(p.date))}</span></div>
     </div>
   </article>`;
 }
+// searchable in both languages: the German game names and the ones shown on the page
+const haystack = p => [p.name, pname(p), p.origin, p.location, tLoc(p.location), p.decor, tDecor(p.decor),
+  p.spot, tSpot(p.spot), p.color, tColor(p.color)].join(" ").toLowerCase();
 function filtered() {
   const q = state.q;
   let list = state.points ? pointCandidates()
@@ -473,13 +612,13 @@ function filtered() {
     (!state.colors.size || state.colors.has(p.color)) &&
     (!state.fav || p.fav) &&
     (state.decor === "" || (state.decor === "*" ? p.decor : state.decor === "-" ? !p.decor : p.decor === state.decor)) &&
-    (!q || [p.name, p.origin, p.location, p.decor, p.spot, p.color].join(" ").toLowerCase().includes(q)));
+    (!q || haystack(p).includes(q)));
   const cmp = {
     rank: (a, b) => a.rank - b.rank,
     steps: (a, b) => b.steps - a.steps,
     new: (a, b) => b.date.localeCompare(a.date) || a.rank - b.rank,
     old: (a, b) => a.date.localeCompare(b.date) || a.rank - b.rank,
-    name: (a, b) => a.name.localeCompare(b.name, "de") || a.rank - b.rank
+    name: (a, b) => pname(a).localeCompare(pname(b), L) || a.rank - b.rank
   }[state.sort];
   return list.sort(cmp);
 }
@@ -487,7 +626,6 @@ function filtered() {
 /* ---- matrix ---- */
 // Pikmin without decor whose discovery spot offers decor k in color n
 // rare decor only ever upgrades an existing Pikmin carrying the base decor
-const RARE = " (Selten)";
 const baseOf = k => k.endsWith(RARE) ? k.slice(0, -RARE.length) : null;
 const noEis = k => baseOf(k) ? NO_EIS.has(baseOf(k)) || RARE_NO_EIS.has(baseOf(k)) : NO_EIS.has(k);
 // false = this colour does not exist for the decor in-game
@@ -495,7 +633,6 @@ const available = (k, n) => {
   const only = ONLY_COLORS[baseOf(k) || k.split(" · ")[0]];
   return only ? only.includes(n) : !(n === "Eis" && noEis(k));
 };
-// rare sets whose slots are unlocked in-game even without a find yet
 // rare sets unlocked in the in-game collection (config.local.json "rare_unlocked")
 const RARE_UNLOCKED = (DATA.config && DATA.config.rareUnlocked) || [];
 // normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026). German names still
@@ -503,9 +640,9 @@ const RARE_UNLOCKED = (DATA.config && DATA.config.rareUnlocked) || [];
 const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Hirschkäfer", "Eichelhut", "Köder", "Ticket",
   "Banane", "Baguette", "Schere", "Vierblättriger Klee", "Münze"]);
 function rareBadge(k, names) {
-  if (baseOf(k)) return { cls: "rare", html: `<span class="rare-badge rare" title="Seltene Deko">✦ selten</span>` };
+  if (baseOf(k)) return { cls: "rare", html: `<span class="rare-badge rare" title="${T.rareTitle}">${T.rare}</span>` };
   if (RARE_EXISTS.has(k) || names.has(k + RARE))
-    return { cls: "has-rare", html: `<span class="rare-badge has" title="Zu dieser Deko gibt es eine seltene Variante">✦</span>` };
+    return { cls: "has-rare", html: `<span class="rare-badge has" title="${T.hasRareTitle}">✦</span>` };
   return { cls: "", html: "" };
 }
 // places whose rare decor level is unlocked (their rare sets show up in the collection)
@@ -514,6 +651,7 @@ function rareSpots() {
     .map(k => (P.find(p => p.decor === k || p.decor === baseOf(k) || p.spotDecor === baseOf(k)) || {}).spot)
     .filter(Boolean));
 }
+const rareSpotNames = () => [...rareSpots()].map(tSpot).join(", ");
 // Pikmin without decor from those places: reaching L4 gives their decor and 200 decor points
 const pointCandidates = () => { const spots = rareSpots(); return P.filter(p => !p.decor && spots.has(p.spot)); };
 const candidates = (k, n) => baseOf(k)
@@ -538,31 +676,32 @@ function matrix() {
   const setRank = k => { const base = baseOf(k); const i = ORDER.sets.indexOf(base || k); return (i < 0 ? 500 : i) - (base ? 1000 : 0); };
   rows.sort((a, b) => spotRank(a.spot) - spotRank(b.spot) || a.spot.localeCompare(b.spot, "de")
     || setRank(a.k) - setRank(b.k) || a.k.localeCompare(b.k, "de"));
-  const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">Deko</th>` +
-    COLORS.map(([n]) => `<th scope="col"><span class="dot" style="--c:${cvar[n]}"></span>${n}</th>`).join("") +
-    `<th scope="col">Σ</th><th scope="col" title="Fehlende Farben, für die schon ein passendes Pikmin da ist">Kandidaten</th></tr></thead>`;
+  const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">${T.mDecor}</th>` +
+    COLORS.map(([n]) => `<th scope="col"><span class="dot" style="--c:${cvar[n]}"></span>${tColor(n)}</th>`).join("") +
+    `<th scope="col">Σ</th><th scope="col" title="${T.mCandTitle}">${T.mCand}</th></tr></thead>`;
   // a decor split into motifs: its plain row only collects candidates (the motif of a future
   // Pikmin is unknown), so a colour counts as done when every motif already has it
   const motifRows = k => rows.filter(r => r.list.length && r.list[0].motif && r.k.startsWith(k + " · "));
   const allMotifsHave = (k, n) => { const m = motifRows(k); return m.length && m.every(r => r.list.some(p => p.color === n)); };
   const body = rows.map(({ k, list, spot, open }, i) => {
-    const place = i === 0 || rows[i - 1].spot !== spot ? `<tr class="cat"><th colspan="11" scope="rowgroup">${esc(spot)}</th></tr>` : "";
+    const place = i === 0 || rows[i - 1].spot !== spot ? `<tr class="cat"><th colspan="11" scope="rowgroup">${esc(tSpot(spot))}</th></tr>` : "";
     const slots = COLORS.filter(([n]) => available(k, n)).length;
     const split = motifRows(k).length > 0;
+    const kt = esc(tDecor(k));
     const cells = COLORS.map(([n]) => {
-      if (!available(k, n)) return `<td><span class="na" title="Gibt es im Spiel nicht">–</span></td>`;
-      if (split && allMotifsHave(k, n)) return `<td><span class="na" title="Alle Motive haben diese Farbe">✓</span></td>`;
+      if (!available(k, n)) return `<td><span class="na" title="${T.naTitle}">–</span></td>`;
+      if (split && allMotifsHave(k, n)) return `<td><span class="na" title="${T.allMotifs}">✓</span></td>`;
       const c = list.filter(p => p.color === n).length;
-      if (c) return `<td><button class="has" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" aria-label="${esc(k)} ${n}: ${c}">${c}</button></td>`;
+      if (c) return `<td><button class="has" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" aria-label="${kt} ${tColor(n)}: ${c}">${c}</button></td>`;
       const cand = candidates(k, n).length;
       return cand
-        ? `<td><button class="cand" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" title="${cand} Kandidat${cand > 1 ? "en" : ""} ohne Deko" aria-label="${esc(k)} ${n}: fehlt, ${cand} Kandidaten">○${cand > 1 ? cand : ""}</button></td>`
-        : `<td><button class="none" disabled aria-label="${esc(k)} ${n}: keins">·</button></td>`;
+        ? `<td><button class="cand" style="--c:${cvar[n]}" data-decor="${esc(k)}" data-color="${n}" title="${T.candTitle(cand)}" aria-label="${T.candAria(kt, tColor(n), cand)}">○${cand > 1 ? cand : ""}</button></td>`
+        : `<td><button class="none" disabled aria-label="${T.noneAria(kt, tColor(n))}">·</button></td>`;
     }).join("");
     const have = COLORS.filter(([n]) => list.some(p => p.color === n)).length;
-    const sub = split ? "Kandidaten, Motiv noch offen" : `${have} von ${slots} Farben`;
+    const sub = split ? T.subSplit : T.subHave(have, slots);
     const badge = rareBadge(k, names);
-    return place + `<tr class="${badge.cls}"><th scope="row">${esc(k)}${badge.html}<small>${sub}</small></th>${cells}` +
+    return place + `<tr class="${badge.cls}"><th scope="row">${kt}${badge.html}<small>${sub}</small></th>${cells}` +
       `<td class="total">${list.length}</td><td class="total${open ? " open" : ""}">${open || "–"}</td></tr>`;
   }).join("");
   // open candidates = missing colours for which a fitting Pikmin already exists (column "Kandidaten")
@@ -570,50 +709,46 @@ function matrix() {
   const openRare = sum(rows.filter(r => baseOf(r.k)));
   const openNormal = sum(rows.filter(r => !baseOf(r.k)));
   const decorTotal = rows.reduce((s, r) => s + r.list.length, 0);
-  const foot = `<tfoot><tr><th scope="row">Summe<small>offene Kandidaten gesamt</small></th>` +
+  const foot = `<tfoot><tr><th scope="row">${T.sum}<small>${T.sumSub}</small></th>` +
     `<td colspan="8"></td><td class="total">${decorTotal}</td><td class="total open">${openNormal + openRare}</td></tr></tfoot>`;
   $("matrix").innerHTML = head + `<tbody>${body}</tbody>` + foot;
   const pts = pointCandidates().length;
   $("matrix-sum").innerHTML = [
-    ["Offen · normale Deko", openNormal],
-    ["Offen · seltene Deko", openRare],
-    ["Offen · gesamt", openNormal + openRare]
+    [T.openNormal, openNormal],
+    [T.openRare, openRare],
+    [T.openAll, openNormal + openRare]
   ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("") +
-    `<div class="points"><dt>L4 für Dekor-Punkte</dt><dd><button id="points-btn" type="button" ` +
-    `title="Pikmin ohne Deko aus Orten mit freigeschalteter seltener Deko anzeigen">${pts}</button>` +
-    `<small>${esc([...rareSpots()].join(", ") || "keine Orte")} · je 200 Punkte = ${fmt(pts * 200)}</small></dd></div>`;
+    `<div class="points"><dt>${T.points}</dt><dd><button id="points-btn" type="button" ` +
+    `title="${T.pointsTitle}">${pts}</button>` +
+    `<small>${esc(rareSpotNames() || T.noPlaces)} · ${T.perPoints(fmt(pts * 200))}</small></dd></div>`;
 }
 
 function render() {
   const list = filtered();
   const active = state.q || state.colors.size || state.decor || state.fav || state.cand || state.points;
   const label = state.points
-    ? `${list.length} Pikmin für je 200 Dekor-Punkte (${esc([...rareSpots()].join(", "))})`
+    ? T.pointsLabel(list.length, esc(rareSpotNames()))
     : state.cand
-    ? `${list.length} Kandidat${list.length > 1 ? "en" : ""} für ${esc(state.cand.decor)} · ${state.cand.color}`
-    : `${list.length} von ${P.length}`;
-  $("shown").innerHTML = label + (active ? ` <button class="reset">Zurücksetzen</button>` : "");
+    ? T.candLabel(list.length, esc(tDecor(state.cand.decor)), tColor(state.cand.color))
+    : T.ofTotal(list.length, P.length);
+  $("shown").innerHTML = label + (active ? ` <button class="reset">${T.reset}</button>` : "");
   if (state.view === "grid") {
     hid = 0;
-    $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">${state.points
-      ? "Keins – alle Pikmin aus Orten mit freigeschalteter seltener Deko haben ihre Deko schon. Neue Punkte gibt es hier nur über neue Keime von dort."
-      : "Kein Pikmin passt zu diesen Filtern."}</p>`;
+    $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">${state.points ? T.emptyPoints : T.empty}</p>`;
   }
 }
 
+texts();
 masthead();
 controls();
 matrix();
 /* ---- Pilzkampf: pikminwiki.com/Mushroom_battle, attack power since 14 Dec 2022 ---- */
 const BASE = { Rot: 4, Gelb: 3, Blau: 3, Lila: 6, Weiß: 2, Flügel: 2, Fels: 5, Eis: 2 };
-const HEADS = [["Nichts", 0], ["Blatt", 1], ["Blume", 3], ["Saison-/Eventblume", 4], ["Blume des Monats", 5]];
+const HEADS = [0, 1, 3, 4, 5].map((v, i) => [T.heads[i], v]);
 const MUSHROOMS = [
-  ["Roter Pilz", "var(--c-rot)"], ["Gelber Pilz", "var(--c-gelb)"], ["Blauer Pilz", "var(--c-blau)"],
-  ["Lila Pilz", "var(--c-lila)"], ["Weißer Pilz", "var(--c-weiss)"], ["Rosa Pilz", "var(--c-fluegel)"],
-  ["Grauer Pilz", "var(--c-fels)"], ["Eisblauer Pilz", "var(--c-eis)"], ["Feuerpilz", "#F07A2C"],
-  ["Strompilz", "#F2C230"], ["Wasserpilz", "#3E7BE0"], ["Giftpilz", "#8A4FD0"], ["Kristallpilz", "#9FD4E6"],
-  ["Event-Pilz", "var(--accent)"]
-];
+  "var(--c-rot)", "var(--c-gelb)", "var(--c-blau)", "var(--c-lila)", "var(--c-weiss)", "var(--c-fluegel)",
+  "var(--c-fels)", "var(--c-eis)", "#F07A2C", "#F2C230", "#3E7BE0", "#8A4FD0", "#9FD4E6", "var(--accent)"
+].map((c, i) => [T.mushrooms[i], c]);
 // matchup bonus, rows = attacking Pikmin exactly as in the wiki table, columns = MUSHROOMS;
 // null = this colour cannot attack the (elemental) mushroom
 const X = null;
@@ -650,14 +785,14 @@ function power(p, mi, head) {
 function renderEvent() {
   const bases = [...new Set(P.map(decorBase).filter(Boolean))];
   const rank = b => { const i = (DATA.order?.sets || []).findIndex(s => s === b || s.startsWith(b + " · ")); return i < 0 ? 999 : i; };
-  bases.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, "de"));
+  bases.sort((a, b) => rank(a) - rank(b) || tDecor(a).localeCompare(tDecor(b), L));
   const role = b => EVENT.primary.includes(b) ? "primary" : EVENT.secondary.includes(b) ? "secondary" : "";
   const active = EVENT.primary.length + EVENT.secondary.length;
-  $("event-cfg").innerHTML = `<div class="event-head"><strong>Deko-Event</strong>
-      <span>${active ? `aktiv: ${EVENT.primary.length} primär, ${EVENT.secondary.length} sekundär` : "kein Event gewählt"}</span>
-      ${active ? `<button type="button" class="reset" data-reset="1">Zurücksetzen</button>` : ""}</div>
-    <p>Deko antippen: 1× <b class="ev primary">primär</b> (+300 am Event-Pilz), 2× <b class="ev secondary">sekundär</b> (+100), 3× aus. Andere Pilze: +15.</p>
-    <div class="event-chips">${bases.map(b => `<button type="button" class="ev-chip ${role(b)}" data-decor="${esc(b)}">${esc(b)}</button>`).join("")}</div>`;
+  $("event-cfg").innerHTML = `<div class="event-head"><strong>${T.eventTitle}</strong>
+      <span>${active ? T.eventActive(EVENT.primary.length, EVENT.secondary.length) : T.eventNone}</span>
+      ${active ? `<button type="button" class="reset" data-reset="1">${T.reset}</button>` : ""}</div>
+    <p>${T.eventHelp}</p>
+    <div class="event-chips">${bases.map(b => `<button type="button" class="ev-chip ${role(b)}" data-decor="${esc(b)}">${esc(tDecor(b))}</button>`).join("")}</div>`;
 }
 function saveEvent() {
   try { localStorage.setItem(EVENT_KEY, JSON.stringify(EVENT)); } catch (e) { /* no storage */ }
@@ -684,14 +819,14 @@ function squad(mi, head) {
     .sort((a, b) => b.v - a.v || b.p.steps - a.p.steps).slice(0, SQUAD);
 }
 function pilze() {
-  const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">Pilz</th>` +
+  const head = `<thead><tr><th scope="col" style="text-align:left;padding-left:14px">${T.colPilz}</th>` +
     HEADS.map(([n]) => `<th scope="col">${n}</th>`).join("") + `</tr></thead>`;
   const body = MUSHROOMS.map(([name, c], mi) => `<tr><th scope="row"><span class="dot" style="--c:${c}"></span>${name}</th>` +
     HEADS.map(([, hv], hi) => {
       const s = squad(mi, hv);
       const sum = s.reduce((a, x) => a + x.v, 0);
       return `<td><button class="pow" data-m="${mi}" data-h="${hi}" aria-pressed="false">${fmt(sum)}` +
-        `${s.length < SQUAD ? `<small>${s.length} Pikmin</small>` : ""}</button></td>`;
+        `${s.length < SQUAD ? `<small>${T.nPikmin(s.length)}</small>` : ""}</button></td>`;
     }).join("") + `</tr>`).join("");
   $("pilze").innerHTML = head + `<tbody>${body}</tbody>`;
 }
@@ -703,12 +838,12 @@ function showSquad(mi, hi, scroll = true) {
   const [hn, hv] = HEADS[hi];
   const s = squad(mi, hv);
   const sum = s.reduce((a, x) => a + x.v, 0);
-  const heartsText = p => p.goldHearts > 0 ? `${p.goldHearts}× Goldherz` : `${Math.floor(p.hearts)} ${Math.floor(p.hearts) === 1 ? "Herz" : "Herzen"}`;
-  $("squad").innerHTML = `<h3>${name} · ${hn}: ${fmt(sum)} <small>${s.length} Pikmin</small></h3>` +
+  const heartsText = p => p.goldHearts > 0 ? T.goldHearts(p.goldHearts) : T.heartsN(Math.floor(p.hearts));
+  $("squad").innerHTML = `<h3>${name} · ${hn}: ${fmt(sum)} <small>${T.nPikmin(s.length)}</small></h3>` +
     `<ol class="squad">` + s.map(({ p, v }) => `<li>
       <span class="mini" style="--c:${cvar[p.color]}"><i style="${sprite(p)}"></i></span>
-      <span class="sq-name">${esc(p.name)}<small>${p.color}${p.decor ? " · " + esc(p.decor) : ""} · ${heartsText(p)}</small></span>
-      <span class="sq-calc" title="Grundwert + Deko + Kopf + Freundschaft + Pilz${eventBonus(p, mi) ? " + Event" : ""}">${BASE[p.color]} + ${p.decor ? 4 : 0} + ${hv} + ${friendPoints(p)} + ${MATCH[p.color][mi]}${eventBonus(p, mi) ? ` + <b class="ev ${EVENT.primary.includes(decorBase(p)) ? "primary" : "secondary"}">${eventBonus(p, mi)}</b>` : ""}</span>
+      <span class="sq-name">${esc(pname(p))}<small>${tColor(p.color)}${p.decor ? " · " + esc(tDecor(p.decor)) : ""} · ${heartsText(p)}</small></span>
+      <span class="sq-calc" title="${T.calcTitle(eventBonus(p, mi))}">${BASE[p.color]} + ${p.decor ? 4 : 0} + ${hv} + ${friendPoints(p)} + ${MATCH[p.color][mi]}${eventBonus(p, mi) ? ` + <b class="ev ${EVENT.primary.includes(decorBase(p)) ? "primary" : "secondary"}">${eventBonus(p, mi)}</b>` : ""}</span>
       <span class="sq-pow">${v}</span></li>`).join("") + `</ol>`;
   if (scroll) $("squad").scrollIntoView({ behavior: "smooth", block: "start" });
 }
