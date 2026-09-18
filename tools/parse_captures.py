@@ -72,24 +72,48 @@ def classify(px):
     return red, gold, grey
 
 
+HEART_SCAN = (140, 470)   # x range of the heart row; the icons are centred, 1-4 of them
+
+
+def heart_icons(band, x0):
+    """Column runs of heart pixels = the heart icons (partly filled ones stay one run)."""
+    red, gold, grey = classify(band[:, x0:HEART_SCAN[1]])
+    mask = (red | gold | grey).any(axis=0)
+    icons, start = [], None
+    for x, on in enumerate(list(mask) + [False]):
+        if on and start is None:
+            start = x
+        elif not on and start is not None:
+            if x - start >= 15:
+                icons.append((x0 + start, x0 + x))
+            start = None
+    return icons
+
+
 def read_hearts(img, steps_y):
+    """Friendship from the heart icons. A heart is complete only when it shows the white
+    highlight at its top left (red or gold); the heart in progress has none and counts with
+    its fill. Returns (hearts, gold_any, completed gold hearts)."""
     a = np.asarray(img)
     y = steps_y + HEART_DY
     band = a[y - 12:y + 12]
-    total, gold_any, gold_full = 0.0, False, 0
-    for i in range(4):
-        cx = HEART_X0 + HEART_DX * i
-        red, gold, grey = classify(band[:, cx - HEART_HALF:cx + HEART_HALF])
-        coloured = (red | gold).any(axis=0)
-        heart = coloured | grey.any(axis=0)
-        if heart.sum() < 10:
-            continue
-        total += coloured.sum() / heart.sum()
+    red_full = gold_full = 0
+    partial, gold_any = 0.0, False
+    for s, e in heart_icons(band, HEART_SCAN[0]):
+        red, gold, grey = classify(band[:, s:e])
+        filled = (red | gold).any(axis=0)
         gold_any |= bool(gold.sum() > 20)
-        # completed gold heart (attack power counts only full ones); verified: full >= 0.93,
-        # nearly full ones read 0.77-0.86
-        gold_full += gold.any(axis=0).sum() / heart.sum() >= 0.9
-    return round(total * 4) / 4, gold_any, int(gold_full)
+        box = a[y - 10:y - 2, s + 8:s + 18].astype(int)
+        highlight = ((box[..., 0] > 235) & (box[..., 1] > 235) & (box[..., 2] > 235)).sum() >= 6
+        if highlight and gold.sum() > red.sum():
+            gold_full += 1
+        elif highlight:
+            red_full += 1
+        elif not gold.any():
+            partial = max(partial, filled.sum() / (e - s))  # the one red heart being filled
+    # a heart without highlight is not complete: its fill to the nearest quarter, at most 3/4
+    hearts = 4.0 if gold_any else min(4.0, red_full + min(0.75, round(partial * 4) / 4))
+    return hearts, gold_any, gold_full
 
 
 def read_star(img, name_top, name_bottom):
