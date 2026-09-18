@@ -43,6 +43,12 @@ DIM_DROP = 40                         # card this much darker than the first = d
 RETRIES_UNREADABLE = 5
 RETRIES_SWIPE = 3
 LANG = LANGS["de"]  # game language, detected from the first card of a run
+SEEDS = False       # scanning the seedling list instead of the Pikmin list
+
+
+def is_name(text):
+    """The name line of a card: "... Pikmin ..." or, for seedlings, "blauer Keim"."""
+    return LANG["seed"] in text.lower() if SEEDS else "Pikmin" in text
 
 
 ADB_LOCAL = ROOT / "platform-tools" / "adb.exe"  # downloaded next to the app
@@ -194,15 +200,16 @@ def readable(lines, height):
     """Card fields present below the model: name, steps, discovery date."""
     card = [t for y, t in lines if y > height * CARD_TOP]
     text = " ".join(card)
-    return [k for k, needle in (("Name", "Pikmin"), ("Schritte", LANG["steps"]),
-                                ("Entdeckt", LANG["discovered"])) if needle not in text]
+    missing = [k for k, needle in (("Schritte", LANG["steps"]), ("Entdeckt", LANG["discovered"]))
+               if needle not in text]
+    return (["Name"] if not any(is_name(t) for t in card) else []) + missing
 
 
 def card_key(lines, height):
     """Name, steps and discovery date of a card - the floating egg button over the location
     text changes the image of an unchanged card, but not these lines."""
     return tuple(t for y, t in lines if height * CARD_TOP < y < SCROLLED_Y
-                 and ("Pikmin" in t or LANG["steps"] in t or LANG["discovered"] in t))
+                 and (is_name(t) or LANG["steps"] in t or LANG["discovered"] in t))
 
 
 def card_digits(key):
@@ -347,8 +354,9 @@ def _run(out_dir, start_n, test=False):
             return
         seen.append((n, sig))
         seen_keys[n] = key
-        name = next((t for y, t in lines if "Pikmin" in t), "?")
-        log.write(json.dumps({"n": n, "lines": lines, "device": list(DEVICE), "lang": code},
+        name = next((t for y, t in lines if is_name(t)), "?")
+        log.write(json.dumps({"n": n, "lines": lines, "device": list(DEVICE), "lang": code,
+                              **({"kind": "seed"} if SEEDS else {})},
                              ensure_ascii=False) + "\n")
         log.flush()
         print(f"#{n:03d} {name}", flush=True)
@@ -444,7 +452,12 @@ def main():
     ap.add_argument("--resume", type=Path)
     ap.add_argument("--single", type=Path, help=tr("Laufordner: nur die offene Karte neu aufnehmen",
                                                    "run folder: re-take only the open card"))
+    ap.add_argument("--seeds", action="store_true", help=tr("Keim-Liste statt Pikmin-Liste scannen",
+                                                            "scan the seedling list instead of the Pikmin list"))
     args = ap.parse_args()
+    global SEEDS
+    # seedling scans live in captures/seeds/, apart from the Pikmin scans
+    SEEDS = args.seeds or (args.resume is not None and args.resume.resolve().parent.name == "seeds")
     if args.single:
         single(args.single)
     elif args.resume:
@@ -452,7 +465,8 @@ def main():
         run(args.resume, int(done[-1].stem) + 1 if done else 1)
     else:
         stamp = dt.datetime.now().strftime("%Y-%m-%d_%H%M")
-        run(ROOT / "captures" / (stamp + ("_test" if args.test else "")), 1, test=args.test)
+        base = ROOT / "captures" / ("seeds" if SEEDS else "")
+        run(base / (stamp + ("_test" if args.test else "")), 1, test=args.test)
 
 
 if __name__ == "__main__":

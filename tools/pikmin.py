@@ -17,9 +17,11 @@ from ui import tr
 TOOLS = ROOT / "tools"
 # the packaged app runs each step as a subcommand of itself (tools/app.py)
 COMMANDS = {"capture_adb.py": "capture", "parse_captures.py": "parse", "diff_capture.py": "diff",
-            "apply_capture.py": "apply", "build_page.py": "build", "publish.py": "publish"}
+            "apply_capture.py": "apply", "build_page.py": "build", "publish.py": "publish",
+            "parse_seeds.py": "seeds"}
 CAPTURES = ROOT / "captures"
 LAST = CAPTURES / ".last_run"
+SEEDS_DIR = CAPTURES / "seeds"
 ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
 PHONE_CHECK = tr("""
@@ -33,6 +35,16 @@ Prepare the phone:
   - Pikmin Bloom in German or English
   - Pikmin list in the game sorted BY DECOR (otherwise no sticker motifs/park sets)
   - the FIRST Pikmin OUTSIDE the squad is open""")
+
+SEED_CHECK = tr("""
+Vorbereitung am Handy:
+  - per USB angeschlossen und entsperrt, 'Nicht stören' an
+  - Keim-Liste im Spiel NACH DEKO sortiert (sonst keine Sticker-Motive/Park-Sets)
+  - den ERSTEN Keim der Liste geöffnet""", """
+Prepare the phone:
+  - connected via USB and unlocked, 'Do not disturb' on
+  - seedling list in the game sorted BY DECOR (otherwise no sticker motifs/park sets)
+  - the FIRST seedling of the list is open""")
 
 REVIEW_HINT = tr("""
 Im Bericht oben prüfen:
@@ -195,6 +207,30 @@ def step_publish():
     return run_script("publish.py")
 
 
+def seed_runs():
+    if not SEEDS_DIR.exists():
+        return []
+    return sorted(p for p in SEEDS_DIR.iterdir()
+                  if p.is_dir() and p.name[:2] == "20" and not p.name.endswith("_test"))
+
+
+def step_seeds():
+    headline(tr("Keime scannen", "Scan seedlings"))
+    print(SEED_CHECK)
+    if not ask(tr("Alles bereit?", "All set?")):
+        return
+    before = set(seed_runs())
+    run_script("capture_adb.py", "--seeds")
+    new = [p for p in seed_runs() if p not in before]
+    if not new:
+        print(tr("Es wurde kein Scan-Ordner angelegt.", "No scan folder was created."))
+        return
+    step_resume_until_done(new[-1])
+    if run_script("parse_seeds.py", new[-1]) and run_script("build_page.py"):
+        print(tr("\nFertig: Reiter 'Keime' auf der Seite (lokal: 9, online nach 8).",
+                 "\nDone: tab 'Seedlings' on the page (locally: 9, online after 8)."))
+
+
 def open_page():
     page = ROOT / "web" / "index.html"
     if page.exists():
@@ -249,6 +285,7 @@ Pikmin-Herbarium
   8) Veröffentlichen (Server)
   9) Seite lokal im Browser öffnen
  10) Scan-Ordner wählen
+ 11) Keime scannen + auswerten
   0) Beenden""", """
 Pikmin Herbarium
   1) Full update (guided)
@@ -262,6 +299,7 @@ Pikmin Herbarium
   8) Publish (server)
   9) Open the page locally in the browser
  10) Choose scan folder
+ 11) Scan + evaluate seedlings
   0) Quit""")
 
 
@@ -289,6 +327,8 @@ def main():
                 open_page()
             elif choice == "10":
                 choose_run()
+            elif choice == "11":
+                step_seeds()
             elif choice == "0":
                 return
         except KeyboardInterrupt:

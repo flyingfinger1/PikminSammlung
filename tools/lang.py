@@ -19,12 +19,14 @@ GERMAN = {
     # words on the card (substring of an OCR line)
     "steps": "Schritte", "discovered": "Entdeckt", "squad": "Gruppe", "in_squad": "Aus der Gruppe",
     "rename": "Namen", "share": "teilen", "friendship": "Freundschaft", "walked": "gelaufen",
+    "seed": "keim",  # "blauer Keim", "Flügelkeim", "Riesenkeim"
 }
 
 ENGLISH = {
     "code": "en", "ocr": "en-US",
     "steps": "steps", "discovered": "Discovered", "squad": "Squad", "in_squad": "Remove from",
     "rename": "Change Name", "share": "Share", "friendship": "Friendship", "walked": "Walked",
+    "seed": "seedling",  # "Blue Seedling", "Huge Seedling" (spelling from the wiki, not seen on a card yet)
     "colors": {"Red": "Rot", "Yellow": "Gelb", "Blue": "Blau", "Purple": "Lila", "White": "Weiß",
                "Rock": "Fels", "Winged": "Flügel", "Ice": "Eis"},
     # place on the card -> German place (pikminwiki.com/Decor_Pikmin, in-game order; names

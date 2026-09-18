@@ -19,6 +19,8 @@ def command(name):
         import build_page as module
     elif name == "publish":
         import publish as module
+    elif name == "seeds":
+        import parse_seeds as module
     else:
         return None
     return module.main
@@ -38,7 +40,7 @@ def main():
         return
     step = command(sys.argv[1])
     if step is None:
-        sys.exit(f"unknown command: {sys.argv[1]} (capture, parse, diff, apply, build, publish)")
+        sys.exit(f"unknown command: {sys.argv[1]} (capture, parse, diff, apply, build, publish, seeds)")
     sys.argv = [f"{sys.argv[0]} {sys.argv[1]}", *sys.argv[2:]]
     step()
 

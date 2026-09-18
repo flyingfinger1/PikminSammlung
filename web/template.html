@@ -180,7 +180,26 @@ h1 {
 .matrix tbody tr.has-rare th[scope="row"] { box-shadow: inset 4px 0 0 color-mix(in srgb, var(--gold) 45%, var(--surface)); }
 /* ---------- Pilzkampf ---------- */
 body[data-view="pilze"] .bar .search, body[data-view="pilze"] #decor, body[data-view="pilze"] #sort,
-body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="pilze"] #shown { display: none; }
+body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="pilze"] #shown,
+body[data-view="keime"] .bar .search, body[data-view="keime"] #decor, body[data-view="keime"] #sort,
+body[data-view="keime"] #fav, body[data-view="keime"] #colors, body[data-view="keime"] #shown { display: none; }
+/* ---------- Keime ---------- */
+.seed-group h3 { font-family: var(--display); font-size: 20px; margin: 22px 2px 10px; }
+.seed-group h3 small { font-family: var(--body); font-size: 13px; font-weight: 400; color: var(--muted); }
+.seed-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+.seed-list li {
+  display: grid; grid-template-columns: 14px 1fr auto; gap: 3px 10px; align-items: baseline;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px;
+}
+.seed-list li.special { box-shadow: inset 4px 0 0 var(--gold); }
+.seed-list .dot { align-self: center; }
+.seed-name { font-weight: 600; font-size: 14px; line-height: 1.3; min-width: 0; }
+.seed-name small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.seed-grow { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.seed-why { grid-column: 2 / -1; font-size: 13px; }
+.seed-why.hatch { color: var(--accent); font-weight: 600; }
+.seed-why.maybe { color: var(--ink); }
+.seed-why.wait, .seed-why.planted { color: var(--muted); }
 .pilze-intro { margin: 0 2px 14px; color: var(--muted); max-width: 70ch; }
 .event-cfg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; }
 .event-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
@@ -294,6 +313,7 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
         <button id="tab-grid" role="tab" aria-selected="true" data-t="tabGrid"></button>
         <button id="tab-matrix" role="tab" aria-selected="false" data-t="tabMatrix"></button>
         <button id="tab-pilze" role="tab" aria-selected="false" data-t="tabPilze"></button>
+        <button id="tab-keime" role="tab" aria-selected="false" data-t="tabKeime" hidden></button>
       </div>
       <label class="search"><input id="q" type="search" data-t-ph="searchPh" data-t-aria="search"></label>
       <select id="decor" data-t-aria="decorSel"></select>
@@ -318,6 +338,12 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
       <div class="matrix-wrap"><table class="matrix pilze" id="pilze"></table></div>
       <div id="squad" class="squad-wrap"></div>
       <p class="matrix-note" data-t-html="pilzeNote"></p>
+    </section>
+    <section id="view-keime" hidden>
+      <p class="pilze-intro" id="seeds-intro"></p>
+      <dl class="matrix-sum" id="seeds-sum"></dl>
+      <div id="seeds"></div>
+      <p class="matrix-note" data-t-html="seedsNote"></p>
     </section>
     <section id="view-matrix" hidden>
       <dl class="matrix-sum" id="matrix-sum"></dl>
@@ -390,7 +416,26 @@ const T = {
     eventTitle: "Deko-Event", eventActive: (p, s) => `aktiv: ${p} primär, ${s} sekundär`, eventNone: "kein Event gewählt",
     eventHelp: `Deko antippen: 1× <b class="ev primary">primär</b> (+300 am Event-Pilz), 2× <b class="ev secondary">sekundär</b> (+100), 3× aus. Andere Pilze: +15.`,
     goldHearts: n => `${n}× Goldherz`, heartsN: n => `${n} ${n === 1 ? "Herz" : "Herzen"}`,
-    calcTitle: ev => `Grundwert + Deko + Kopf + Freundschaft + Pilz${ev ? " + Event" : ""}`
+    calcTitle: ev => `Grundwert + Deko + Kopf + Freundschaft + Pilz${ev ? " + Event" : ""}`,
+    tabKeime: "Keime",
+    seedsIntro: d => `Welche Keime lohnen sich jetzt? Keim-Scan vom ${d}, verglichen mit der Sammlung und der freigeschalteten seltenen Deko.`,
+    seedGroups: { hatch: "Ausbrüten", maybe: "Vielleicht", wait: "Liegen lassen", planted: "Wächst schon" },
+    seedGroupSub: { hatch: "bringen jetzt etwas", maybe: "Set unklar", wait: "lohnen sich erst nach der Freischaltung", planted: "schon eingepflanzt" },
+    seedSum: ["Ausbrüten", "Vielleicht", "Liegen lassen", "Punkte nach Freischaltung"],
+    seedMissing: k => `fehlt noch: ${k}`,
+    seedMaybe: k => `Set unklar – fehlt nur als ${k}`,
+    seedPoints: "+30 Dekor-Punkte (seltene Deko freigeschaltet)",
+    seedHave: k => `${k} schon vorhanden`,
+    seedCand: (k, r) => `${k}: Kandidat #${r} ist schon da`,
+    seedClaimed: k => `${k}: dafür ist schon ein anderer Keim vorgesehen`,
+    seedUnknown: "Deko nicht erkannt",
+    hugeUnlocked: pts => `Deko-Pikmin sofort${pts ? `, +${pts} Dekor-Punkte` : ""}`,
+    hugeChance: (m, t) => `Deko-Pikmin sofort, zufällige Farbe: ${m} von ${t} Farben fehlen noch`,
+    hugeWait: pts => `alle Farben vorhanden – nach der Freischaltung${pts ? ` +${pts} Punkte` : ""}`,
+    grow: (h, n) => h === null ? `${n} Schritte` : `${h} / ${n} Schritte`,
+    seedName: c => ({ Rot: "Roter Keim", Gelb: "Gelber Keim", Blau: "Blauer Keim", Lila: "Lila Keim", Weiß: "Weißer Keim",
+      Flügel: "Flügelkeim", Fels: "Felskeim", Eis: "Eiskeim", Riesen: "Riesenkeim", Gold: "Goldkeim", Silber: "Silberkeim" })[c] || c,
+    seedsNote: "Ein gepflückter Keim bringt 30 Dekor-Punkte, ein Riesenkeim 200 – aber nur, wenn die seltene Deko seiner Kategorie schon freigeschaltet ist (config.local.json „rare_unlocked“). Bis dahin lohnt ein Keim sich nur, wenn er eine Deko-Farbe liefert, die noch fehlt und für die es noch keinen Kandidaten gibt. Als Keim kann er außerdem nicht versehentlich auf 4 Herzen kommen und so seine Deko vor der Freischaltung verbrauchen. Pro fehlender Farbe wird nur ein Keim empfohlen; Keime, die schon wachsen, zählen zuerst. „Vielleicht“: Bei Sticker und Park verrät erst die Sortierung der Keimliste das Set – ist das offen, fehlt die Farbe nur in einem Teil der möglichen Sets. Riesen-, Gold- und Silberkeime geben sofort ein Deko-Pikmin in zufälliger Farbe."
   },
   en: {
     title: "Pikmin Herbarium", asOf: "as of", unknown: "unknown",
@@ -435,7 +480,25 @@ const T = {
     eventTitle: "Decor event", eventActive: (p, s) => `active: ${p} primary, ${s} secondary`, eventNone: "no event chosen",
     eventHelp: `Tap a decor: once = <b class="ev primary">primary</b> (+300 on the event mushroom), twice = <b class="ev secondary">secondary</b> (+100), three times = off. Other mushrooms: +15.`,
     goldHearts: n => `${n}× gold heart`, heartsN: n => `${n} ${n === 1 ? "heart" : "hearts"}`,
-    calcTitle: ev => `Base + decor + head + friendship + mushroom${ev ? " + event" : ""}`
+    calcTitle: ev => `Base + decor + head + friendship + mushroom${ev ? " + event" : ""}`,
+    tabKeime: "Seedlings",
+    seedsIntro: d => `Which seedlings are worth planting now? Seedling scan of ${d}, compared with the collection and the unlocked rare decor.`,
+    seedGroups: { hatch: "Plant now", maybe: "Maybe", wait: "Keep for later", planted: "Already growing" },
+    seedGroupSub: { hatch: "worth it now", maybe: "set unclear", wait: "only worth it once rare decor is unlocked", planted: "already planted" },
+    seedSum: ["Plant now", "Maybe", "Keep for later", "Points once unlocked"],
+    seedMissing: k => `still missing: ${k}`,
+    seedMaybe: k => `set unclear – missing only as ${k}`,
+    seedPoints: "+30 decor points (rare decor unlocked)",
+    seedHave: k => `${k} already collected`,
+    seedCand: (k, r) => `${k}: candidate #${r} already there`,
+    seedClaimed: k => `${k}: another seedling already covers it`,
+    seedUnknown: "decor not recognised",
+    hugeUnlocked: pts => `Decor Pikmin at once${pts ? `, +${pts} decor points` : ""}`,
+    hugeChance: (m, t) => `Decor Pikmin at once, random type: ${m} of ${t} types still missing`,
+    hugeWait: pts => `all types collected – once unlocked${pts ? ` +${pts} points` : ""}`,
+    grow: (h, n) => h === null ? `${n} steps` : `${h} / ${n} steps`,
+    seedName: c => ({ Riesen: "Huge Seedling", Gold: "Gold Seedling", Silber: "Silver Seedling" })[c] || `${COLOR_EN[c] || c} Seedling`,
+    seedsNote: "Plucking a seedling earns 30 decor points, a Huge Seedling 200 – but only once the rare decor of its category is unlocked (config.local.json \"rare_unlocked\"). Until then a seedling is only worth planting when it brings a decor type that is still missing and has no candidate yet. As a seedling it also cannot reach 4 hearts by accident and use up its decor before the unlock. Only one seedling is suggested per missing type; seedlings already growing count first. \"Maybe\": for Sticker and Park only the order of the seedling list tells the set – if it is open, the type is missing in only some of the possible sets. Huge, Gold and Silver Seedlings give a Decor Pikmin of a random type at once."
   }
 }[L];
 
@@ -542,6 +605,7 @@ function controls() {
   $("tab-grid").addEventListener("click", () => setView("grid"));
   $("tab-matrix").addEventListener("click", () => setView("matrix"));
   $("tab-pilze").addEventListener("click", () => setView("pilze"));
+  $("tab-keime").addEventListener("click", () => setView("keime"));
   $("shown").addEventListener("click", e => { if (e.target.classList.contains("reset")) resetFilters(); });
 }
 function syncChips() {
@@ -558,9 +622,11 @@ function setView(v) {
   $("tab-grid").setAttribute("aria-selected", v === "grid");
   $("tab-matrix").setAttribute("aria-selected", v === "matrix");
   $("tab-pilze").setAttribute("aria-selected", v === "pilze");
+  $("tab-keime").setAttribute("aria-selected", v === "keime");
   $("view-grid").hidden = v !== "grid";
   $("view-matrix").hidden = v !== "matrix";
   $("view-pilze").hidden = v !== "pilze";
+  $("view-keime").hidden = v !== "keime";
   document.body.dataset.view = v;
   render();
 }
@@ -854,6 +920,73 @@ $("pilze").addEventListener("click", e => {
 });
 renderEvent();
 pilze();
+
+/* ---- Keime: which seedlings to plant before the rare decor of their category is unlocked ---- */
+const SEEDS = (DATA.seeds && DATA.seeds.list) || [];
+const SPECIAL_POINTS = { Riesen: 200 };  // pikminwiki.com/Decor_Pikmin: plucking a Huge Seedling
+const hasDecor = (k, n) => P.some(p => p.decor === k && p.color === n);
+function seedAdvice() {
+  const spots = rareSpots(), claimed = new Set(), out = new Map();
+  // seedlings already growing come anyway: they claim their missing type first
+  for (const s of [...SEEDS].sort((a, b) => b.planted - a.planted || a.n - b.n)) {
+    const unlocked = spots.has(s.spot), opts = s.options;
+    let act, why;
+    if (!opts.length) {
+      act = "wait"; why = T.seedUnknown;
+    } else if (s.kind === "special") {
+      const pts = SPECIAL_POINTS[s.color] || 0;
+      const types = [...new Set(opts.flatMap(k => COLORS.filter(([n]) => available(k, n)).map(([n]) => n)))];
+      const missing = types.filter(n => opts.some(k => available(k, n) && !hasDecor(k, n)));
+      if (unlocked) { act = "hatch"; why = T.hugeUnlocked(pts); }
+      else if (missing.length) { act = "hatch"; why = T.hugeChance(missing.length, types.length); }
+      else { act = "wait"; why = T.hugeWait(pts); }
+    } else {
+      const slot = k => k + "|" + s.color;
+      const open = opts.filter(k => available(k, s.color) && !hasDecor(k, s.color)
+        && !candidates(k, s.color).length && !claimed.has(slot(k)));
+      const names = list => list.map(k => L === "en" ? `${tColor(s.color)} ${tDecor(k)}` : `${tDecor(k)} ${tColor(s.color)}`).join(", ");
+      if (open.length && open.length === opts.length) {
+        act = "hatch"; why = T.seedMissing(names(open)) + (unlocked ? " · +30" : "");
+        open.forEach(k => claimed.add(slot(k)));
+      } else if (open.length) {
+        act = "maybe"; why = T.seedMaybe(names(open));
+      } else if (unlocked) {
+        act = "hatch"; why = T.seedPoints;
+      } else {
+        const k = opts[0], label = names([k]), cand = candidates(k, s.color)[0];
+        act = "wait";
+        why = opts.length > 1 ? T.seedHave(names(opts)) : hasDecor(k, s.color) ? T.seedHave(label)
+          : cand ? T.seedCand(label, cand.rank) : T.seedClaimed(label);
+      }
+    }
+    out.set(s.n, { act: s.planted ? "planted" : act, why });
+  }
+  return out;
+}
+function seedsView() {
+  if (!SEEDS.length) return;
+  $("tab-keime").hidden = false;
+  const advice = seedAdvice();
+  $("seeds-intro").textContent = T.seedsIntro(showDate(DATA.seeds.scan));
+  const groups = ["hatch", "maybe", "wait", "planted"];
+  const inGroup = g => SEEDS.filter(s => advice.get(s.n).act === g);
+  const waiting = inGroup("wait");
+  const points = waiting.reduce((a, s) => a + (s.kind === "special" ? SPECIAL_POINTS[s.color] || 0 : 30), 0);
+  $("seeds-sum").innerHTML = [inGroup("hatch").length, inGroup("maybe").length, waiting.length, fmt(points)]
+    .map((v, i) => `<div><dt>${T.seedSum[i]}</dt><dd>${v}</dd></div>`).join("");
+  const dot = s => s.kind === "special" ? "var(--gold)" : cvar[s.color];
+  $("seeds").innerHTML = groups.map(g => {
+    const list = inGroup(g);
+    if (!list.length) return "";
+    return `<div class="seed-group"><h3>${T.seedGroups[g]} <small>${list.length} · ${T.seedGroupSub[g]}</small></h3><ul class="seed-list">` +
+      list.map(s => `<li class="${s.kind}"><span class="dot" style="--c:${dot(s)}"></span>
+        <span class="seed-name">${esc(T.seedName(s.color))} · ${esc(s.options.map(tDecor).join(" / ") || tSpot(s.spot))}
+          <small>${esc(tSpot(s.spot))} · ${esc(tLoc(s.location))} · ${showDate(s.date)}</small></span>
+        <span class="seed-grow">${T.grow(s.growHave === null ? null : fmt(s.growHave), fmt(s.growNeed || 0))}</span>
+        <span class="seed-why ${advice.get(s.n).act}">${esc(advice.get(s.n).why)}</span></li>`).join("") + `</ul></div>`;
+  }).join("");
+}
+seedsView();
 
 $("matrix-sum").addEventListener("click", e => {
   if (!e.target.closest("#points-btn")) return;

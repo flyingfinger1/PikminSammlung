@@ -324,13 +324,14 @@ MULTI_SETS = {
 }
 
 
-def assign_variants(rows, unplaced=()):
+def assign_variants(rows, unplaced=(), order=COLOR_ORDER):
     """The in-game list sorted by decor keeps every set together, colours ascending: first
     Pikmin with decor, then those without, again per set. A restart of the colour order
     starts the next set. Sets are only numbered when the block count equals the known number
     of sets - otherwise a set starting with a later colour than the previous one ended with
     could have merged unnoticed, e.g. when there are only few Pikmin. Cards in `unplaced`
-    (appended by a single re-take) have no place in the list and get no set."""
+    (appended by a single re-take) have no place in the list and get no set. The seedling list
+    has the special seedlings after the colours (`order`)."""
     blocks = {}
     prev_key, prev_idx, block = None, -1, 0
     for r in sorted(rows, key=lambda r: r["n"]):
@@ -341,7 +342,7 @@ def assign_variants(rows, unplaced=()):
         if key not in MULTI_SETS or r["group"] == 1:
             prev_key = None
             continue
-        idx = COLOR_ORDER.index(r["color"]) if r["color"] in COLOR_ORDER else -1
+        idx = order.index(r["color"]) if r["color"] in order else -1
         if key != prev_key:
             block = 1
         elif idx < prev_idx:

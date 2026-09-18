@@ -83,6 +83,32 @@ def set_order():
     return order
 
 
+def seeds():
+    """Seedlings of the latest seedling scan (captures/seeds/<run>/parsed.tsv). `options` are the
+    sets a seedling can grow into: one, or all motifs of a decor whose set the list left open."""
+    scans = sorted(p for p in (ROOT / "captures" / "seeds").glob("20*/parsed.tsv") if "_test" not in p.parent.name)
+    if not scans:
+        return None
+    out = []
+    with scans[-1].open(encoding="utf-8") as f:
+        for r in csv.DictReader(f, delimiter="	"):
+            variant = int(r["variant"]) if r.get("variant") else None
+            if r["decor"] in MOTIF_NAMES:
+                names = MOTIF_NAMES[r["decor"]]
+                options = [f"{r['decor']} · {names[variant]}"] if variant else [f"{r['decor']} · {m}" for m in names.values()]
+            elif (r["spot"], r["decor"]) in PLAIN_SET_DECOR:  # Park: the card names no decor
+                sets = PLAIN_SET_DECOR[(r["spot"], r["decor"])]
+                options = [sets[variant]] if variant else list(sets.values())
+            else:
+                options = [r["decor"]] if r["decor"] else []
+            out.append({"n": int(r["n"]), "kind": r["kind"], "color": r["color"], "options": options,
+                        "spot": r["spot"], "location": r["location"], "date": r["date"],
+                        "growHave": int(r["grow_have"]) if r["grow_have"] else None,
+                        "growNeed": int(r["grow_need"]) if r["grow_need"] else None,
+                        "planted": r["planted"] == "1"})
+    return {"scan": scans[-1].parent.name[:10], "list": out}
+
+
 def parse(row):
     name = row["name"]
     m = DECOR_NAME.match(name)
@@ -146,7 +172,7 @@ def main():
     cfg = load_config()
     config = {"rareUnlocked": cfg.get("rare_unlocked", []), "language": cfg.get("language")}
     payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config,
-                          "names": {"en": english_names()}}, ensure_ascii=False)
+                          "names": {"en": english_names()}, "seeds": seeds()}, ensure_ascii=False)
     template = (RES / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")

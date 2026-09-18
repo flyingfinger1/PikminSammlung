@@ -10,6 +10,10 @@ A personal catalogue of all your **Pikmin Bloom** Pikmin, built from your own ph
 - **Mushroom battle** – total attack power of your 40 strongest Pikmin for every mushroom type and
   head state (bare, leaf, flower, seasonal flower, flower of the month), including a selectable
   decor event; click a total to see which Pikmin would attack.
+- **Seedlings** – which of your seedlings are worth planting now: those that bring a decor type you
+  still miss, or give 30 decor points because the rare decor of their category is unlocked. The
+  others wait: before the unlock plucking them earns nothing extra, and as a seedling a Pikmin
+  cannot reach 4 hearts by accident and use up its decor.
 
 There is no official way to export your Pikmin, so the collection is read from the screen: a
 script pages through the Pikmin detail view over **ADB**, reads each card with the built-in
@@ -46,6 +50,7 @@ Start **`PikminHerbarium.exe`**, or with Python double-click **`pikmin.bat`** (o
 | 6 | parse the scan and compare it with the collection (review the report) |
 | 7 | apply (backup `data/pikmin.tsv.bak`) and build the page |
 | 8 | publish `web/index.html` + `web/thumbs.jpg` to your server |
+| 11 | scan the seedling list (sorted by decor, first seedling open) and evaluate it for the page |
 
 Before scanning: phone connected via USB, *Do not disturb* on, the Pikmin list **sorted by decor**
 (needed to tell the sticker motifs and park sets apart), the first Pikmin **outside** a group opened.
@@ -72,6 +77,10 @@ update the app, replace `PikminHerbarium.exe` and `_internal/` and keep the rest
 4. `apply_capture.py` – writes `data/pikmin.tsv` and recuts all portraits (`web/thumbs.jpg`)
 5. `build_page.py` – `data/pikmin.tsv` → `data/pikmin.json`, `data/pikmin.csv`, `web/index.html`
 6. `publish.py` – uploads the page to the server
+
+Seedlings: `capture_adb.py --seeds` pages through the seedling detail views into
+`captures/seeds/<date_time>/`, `parse_seeds.py` reads type, decor, place and growth; the page
+compares them with the collection.
 
 The game language is detected from the first card of a scan. The collection keeps the German game
 names as canonical names, so scans in both languages match the same Pikmin; `tools/lang.py`
