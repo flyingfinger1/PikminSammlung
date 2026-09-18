@@ -81,15 +81,20 @@ def heart_icons(band, x0):
     """Column runs of heart pixels = the heart icons (partly filled ones stay one run)."""
     red, gold, grey = classify(band[:, x0:HEART_SCAN[1]])
     mask = (red | gold | grey).any(axis=0)
-    icons, start = [], None
+    runs, start = [], None
     for x, on in enumerate(list(mask) + [False]):
         if on and start is None:
             start = x
         elif not on and start is not None:
-            if x - start >= 15:
-                icons.append((x0 + start, x0 + x))
+            runs.append([start, x])
             start = None
-    return icons
+    merged = []
+    for run in runs:  # blended red/grey pixels of a scaled screenshot leave small gaps
+        if merged and run[0] - merged[-1][1] <= 6:
+            merged[-1][1] = run[1]
+        else:
+            merged.append(run)
+    return [(x0 + s, x0 + e) for s, e in merged if e - s >= 15]
 
 
 def read_hearts(img, steps_y):
@@ -216,8 +221,8 @@ def parse_card(run, rec):
     if steps_line:
         m = STEPS.fullmatch(steps_text(steps_line[1]))
         steps = int(m.group(1).replace(".", "")) if m else None
-        if steps is None:
-            steps = steps_fallback(run / f"{n:03d}.png", steps_line[0], run / "_steps_tmp.png")
+        if steps is None or (rec.get("device") and rec["device"][0] < 1000):  # small text: read enlarged
+            steps = steps_fallback(run / f"{n:03d}.png", steps_line[0], run / "_steps_tmp.png") or steps
             if steps is None:
                 problems.append(f"Schritte? '{steps_line[1]}'")
     else:
@@ -263,8 +268,9 @@ def parse_card(run, rec):
             else:
                 problems.append("Fundort evtl. abgeschnitten")
     date = parse_date(date_text)
-    if not date and date_y is not None:
-        date = date_fallback(date_img, date_y, run / "_date_tmp.png")
+    lowres = rec.get("device") and rec["device"][0] < 1000  # upscaled screenshot: small text
+    if (lowres or not date) and date_y is not None:
+        date = date_fallback(date_img, date_y, run / "_date_tmp.png") or date
     if not date:
         problems.append(f"Datum? '{date_text}'")
     if decor and spot_decor and decor != spot_decor:

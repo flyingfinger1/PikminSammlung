@@ -68,7 +68,10 @@ def adb(*args, binary=False, attempts=3):
         last = (out.stderr or out.stdout).decode("utf-8", "replace").strip()
         if attempt + 1 < attempts:
             print(f"  adb-Fehler ({last or 'ohne Meldung'}), neuer Versuch ...", flush=True)
-            subprocess.run([ADB, "wait-for-device"], capture_output=True, timeout=60)
+            try:
+                subprocess.run([ADB, "wait-for-device"], capture_output=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                break  # no device came back - report instead of hanging
             time.sleep(2)
     raise AdbError(last or f"adb {' '.join(args[:2])} fehlgeschlagen")
 
@@ -89,9 +92,30 @@ def foreground_app():
     return ""
 
 
+REF_WIDTH = 1080  # every pixel constant of the analysis is calibrated for this width
+DEVICE = None     # real screen size (w, h), for input events
+
+
 def screenshot():
+    """Screenshot scaled to REF_WIDTH. Pikmin Bloom scales its UI with the screen width, so the
+    fixed positions (heart row, star, crops) hold on other resolutions; vertical differences
+    are covered by anchoring on recognised text lines."""
+    global DEVICE
     png = adb("exec-out", "screencap", "-p", binary=True)
-    return Image.open(io.BytesIO(png)).convert("RGB")
+    img = Image.open(io.BytesIO(png)).convert("RGB")
+    DEVICE = img.size
+    if img.width != REF_WIDTH:
+        img = img.resize((REF_WIDTH, round(img.height * REF_WIDTH / img.width)), Image.LANCZOS)
+    return img
+
+
+def swipe_frac(x1, y1, x2, y2, ms):
+    """Swipe given in fractions of the real screen."""
+    if DEVICE is None:
+        screenshot()
+    w, h = DEVICE
+    adb("shell", "input", "swipe", str(int(w * x1)), str(int(h * y1)),
+        str(int(w * x2)), str(int(h * y2)), str(ms))
 
 
 def signature(img):
@@ -132,11 +156,8 @@ def card_key(lines, height):
                  and ("Pikmin" in t or "Schritte" in t or "Entdeckt" in t))
 
 
-def swipe(size):
-    w, h = size
-    y = int(h * SWIPE_Y)
-    adb("shell", "input", "swipe", str(int(w * SWIPE_FROM)), str(y),
-        str(int(w * SWIPE_TO)), str(y), "300")
+def swipe():
+    swipe_frac(SWIPE_FROM, SWIPE_Y, SWIPE_TO, SWIPE_Y, 300)
 
 
 SCROLLED_Y = 5000  # y offset marking OCR lines taken from the scrolled-up screenshot
@@ -146,12 +167,12 @@ def reveal_lower_card(out_dir, n):
     """Long locations push 'Entdeckt' under the nav bar: scroll up, read, scroll back."""
     if PACKAGE_HINT not in foreground_app().lower():
         return []
-    adb("shell", "input", "swipe", "540", "1750", "540", "1150", "600")
+    swipe_frac(0.5, 0.748, 0.5, 0.491, 600)  # was 540,1750 -> 540,1150 on 1080x2340
     time.sleep(1.5)
     path = out_dir / f"{n:03d}_b.png"
     screenshot().save(path)
     lines = [(y + SCROLLED_Y, t) for y, t in ocr(path)]
-    adb("shell", "input", "swipe", "540", "1150", "540", "1750", "600")
+    swipe_frac(0.5, 0.491, 0.5, 0.748, 600)
     time.sleep(1.2)
     return lines
 
@@ -205,7 +226,7 @@ def _run(out_dir, start_n, test=False):
         last_sig = signature(Image.open(last).convert("RGB"))
         if same(signature(screenshot()), last_sig):
             print(f"Karte #{start_n - 1:03d} ist schon gespeichert - wische weiter.", flush=True)
-            swipe(Image.open(last).size)
+            swipe()
             time.sleep(SETTLE)
             if same(signature(screenshot()), last_sig):
                 print(f"Ende: nach #{start_n - 1:03d} ändert Wischen nichts mehr.")
@@ -229,7 +250,7 @@ def _run(out_dir, start_n, test=False):
         seen.append((n, sig))
         seen_keys[n] = key
         name = next((t for y, t in lines if "Pikmin" in t), "?")
-        log.write(json.dumps({"n": n, "lines": lines}, ensure_ascii=False) + "\n")
+        log.write(json.dumps({"n": n, "lines": lines, "device": list(DEVICE)}, ensure_ascii=False) + "\n")
         log.flush()
         print(f"#{n:03d} {name}", flush=True)
         if test:
@@ -239,7 +260,7 @@ def _run(out_dir, start_n, test=False):
             if PACKAGE_HINT not in foreground_app().lower():
                 print("Abbruch: Pikmin Bloom ist nicht mehr im Vordergrund.")
                 return
-            swipe(img.size)
+            swipe()
             time.sleep(SETTLE)
             if not same(signature(screenshot()), sig):
                 break
@@ -291,7 +312,7 @@ def single(run_dir):
             dst.unlink()
         if src.exists():
             src.rename(dst)
-    recs = [r for r in recs if r["n"] not in (n, tmp)] + [{"n": n, "lines": lines, "source": "single"}]
+    recs = [r for r in recs if r["n"] not in (n, tmp)] + [{"n": n, "lines": lines, "source": "single", "device": list(DEVICE)}]
     recs.sort(key=lambda r: r["n"])
     with log_path.open("w", encoding="utf-8") as f:
         for r in recs:
