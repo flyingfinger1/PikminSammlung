@@ -180,6 +180,17 @@ h1 {
 body[data-view="pilze"] .bar .search, body[data-view="pilze"] #decor, body[data-view="pilze"] #sort,
 body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="pilze"] #shown { display: none; }
 .pilze-intro { margin: 0 2px 14px; color: var(--muted); max-width: 70ch; }
+.event-cfg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; }
+.event-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.event-head span { color: var(--muted); font-size: 13px; }
+.event-cfg p { margin: 6px 0 10px; font-size: 13px; color: var(--muted); }
+.event-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ev-chip { height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; font-size: 13px; }
+.ev-chip.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.ev-chip.secondary { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; }
+b.ev { font-weight: 700; padding: 0 5px; border-radius: 6px; }
+b.ev.primary { background: var(--accent); color: var(--accent-ink); }
+b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .pilze { min-width: 680px; }
 .pilze th[scope="row"] .dot { display: inline-block; margin-right: 8px; vertical-align: -1px; }
 .pilze td button.pow {
@@ -292,13 +303,15 @@ body[data-view="pilze"] #fav, body[data-view="pilze"] #colors, body[data-view="p
     <section id="view-pilze" hidden>
       <p class="pilze-intro">Gesamtstärke der <strong>40 stärksten Pikmin</strong> je Pilz, wenn alle dasselbe auf dem Kopf haben.
         Ein Klick auf eine Zahl zeigt, welche Pikmin angreifen würden.</p>
+      <div class="event-cfg" id="event-cfg"></div>
       <div class="matrix-wrap"><table class="matrix pilze" id="pilze"></table></div>
       <div id="squad" class="squad-wrap"></div>
       <p class="matrix-note">Berechnung laut Pikmin-Wiki (Pilzkampf, Angriffsstärke seit Dez. 2022), je Pikmin:
         Grundwert der Farbe (Rot 4, Gelb 3, Blau 3, Lila 6, Weiß 2, Flügel 2, Fels 5, Eis 2)
         + 4 für Deko-Pikmin + Kopf (nichts 0, Blatt 1, Blume 3, Saison-/Eventblume 4, Blume des Monats 5)
         + Freundschaft (volle Herzen 0–4, volle Goldherzen 8/12/16/20) + Farbe gegen Pilz (gleiche Farbe 12, sonst 0 oder 3).
-        Elementpilze greift nur eine Farbe an (+100). Event-Boni für Deko-Pikmin während Events sind nicht eingerechnet.
+        Elementpilze greift nur eine Farbe an (+100). Deko-Event (oben wählbar): primäre Deko +300, sekundäre +100 am Event-Pilz,
+        +15 an allen anderen Pilzen; seltene Deko und Sticker-Motive zählen zu ihrer Grund-Deko.
         Herzen und Deko: Stand des letzten Scans.</p>
     </section>
     <section id="view-matrix" hidden>
@@ -615,10 +628,56 @@ const MATCH = {
 };
 const SQUAD = 40;
 const friendPoints = p => p.goldHearts > 0 ? [0, 8, 12, 16, 20][Math.min(4, p.goldHearts)] : Math.floor(p.hearts);
+// Decor Pikmin events: primary decor +300 / secondary +100 on the event mushroom, +15 on all others.
+// Which decor is primary/secondary changes per event -> chosen on the page, kept in this browser.
+const EVENT_KEY = "pikmin-event-decor";
+const EVENT_MI = MUSHROOMS.length - 1;
+let EVENT = { primary: [], secondary: [] };
+try { EVENT = { ...EVENT, ...JSON.parse(localStorage.getItem(EVENT_KEY) || "{}") }; } catch (e) { /* no storage */ }
+const decorBase = p => { if (!p.decor) return null; const d = p.decor.split(" · ")[0]; return baseOf(d) || d; };
+function eventBonus(p, mi) {
+  const b = decorBase(p);
+  if (!b) return 0;
+  if (EVENT.primary.includes(b)) return mi === EVENT_MI ? 300 : 15;
+  if (EVENT.secondary.includes(b)) return mi === EVENT_MI ? 100 : 15;
+  return 0;
+}
 function power(p, mi, head) {
   const m = MATCH[p.color] ? MATCH[p.color][mi] : null;
-  return m === null ? null : BASE[p.color] + (p.decor ? 4 : 0) + head + friendPoints(p) + m;
+  return m === null ? null : BASE[p.color] + (p.decor ? 4 : 0) + head + friendPoints(p) + m + eventBonus(p, mi);
 }
+function renderEvent() {
+  const bases = [...new Set(P.map(decorBase).filter(Boolean))];
+  const rank = b => { const i = (DATA.order?.sets || []).findIndex(s => s === b || s.startsWith(b + " · ")); return i < 0 ? 999 : i; };
+  bases.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, "de"));
+  const role = b => EVENT.primary.includes(b) ? "primary" : EVENT.secondary.includes(b) ? "secondary" : "";
+  const active = EVENT.primary.length + EVENT.secondary.length;
+  $("event-cfg").innerHTML = `<div class="event-head"><strong>Deko-Event</strong>
+      <span>${active ? `aktiv: ${EVENT.primary.length} primär, ${EVENT.secondary.length} sekundär` : "kein Event gewählt"}</span>
+      ${active ? `<button type="button" class="reset" data-reset="1">Zurücksetzen</button>` : ""}</div>
+    <p>Deko antippen: 1× <b class="ev primary">primär</b> (+300 am Event-Pilz), 2× <b class="ev secondary">sekundär</b> (+100), 3× aus. Andere Pilze: +15.</p>
+    <div class="event-chips">${bases.map(b => `<button type="button" class="ev-chip ${role(b)}" data-decor="${esc(b)}">${esc(b)}</button>`).join("")}</div>`;
+}
+function saveEvent() {
+  try { localStorage.setItem(EVENT_KEY, JSON.stringify(EVENT)); } catch (e) { /* no storage */ }
+  renderEvent();
+  pilze();
+  if (lastSquad) showSquad(...lastSquad, false);
+}
+let lastSquad = null;
+$("event-cfg").addEventListener("click", e => {
+  if (e.target.closest("[data-reset]")) { EVENT = { primary: [], secondary: [] }; return saveEvent(); }
+  const b = e.target.closest(".ev-chip"); if (!b) return;
+  const d = b.dataset.decor;
+  if (EVENT.primary.includes(d)) {
+    EVENT.primary = EVENT.primary.filter(x => x !== d); EVENT.secondary.push(d);
+  } else if (EVENT.secondary.includes(d)) {
+    EVENT.secondary = EVENT.secondary.filter(x => x !== d);
+  } else {
+    EVENT.primary.push(d);
+  }
+  saveEvent();
+});
 function squad(mi, head) {
   return P.map(p => ({ p, v: power(p, mi, head) })).filter(x => x.v !== null)
     .sort((a, b) => b.v - a.v || b.p.steps - a.p.steps).slice(0, SQUAD);
@@ -635,7 +694,10 @@ function pilze() {
     }).join("") + `</tr>`).join("");
   $("pilze").innerHTML = head + `<tbody>${body}</tbody>`;
 }
-function showSquad(mi, hi) {
+function showSquad(mi, hi, scroll = true) {
+  lastSquad = [mi, hi];
+  document.querySelectorAll("#pilze button.pow").forEach(x =>
+    x.setAttribute("aria-pressed", +x.dataset.m === mi && +x.dataset.h === hi));
   const [name] = MUSHROOMS[mi];
   const [hn, hv] = HEADS[hi];
   const s = squad(mi, hv);
@@ -645,15 +707,15 @@ function showSquad(mi, hi) {
     `<ol class="squad">` + s.map(({ p, v }) => `<li>
       <span class="mini" style="--c:${cvar[p.color]}"><i style="${sprite(p)}"></i></span>
       <span class="sq-name">${esc(p.name)}<small>${p.color}${p.decor ? " · " + esc(p.decor) : ""} · ${heartsText(p)}</small></span>
-      <span class="sq-calc" title="Grundwert + Deko + Kopf + Freundschaft + Pilz">${BASE[p.color]} + ${p.decor ? 4 : 0} + ${hv} + ${friendPoints(p)} + ${MATCH[p.color][mi]}</span>
+      <span class="sq-calc" title="Grundwert + Deko + Kopf + Freundschaft + Pilz${eventBonus(p, mi) ? " + Event" : ""}">${BASE[p.color]} + ${p.decor ? 4 : 0} + ${hv} + ${friendPoints(p)} + ${MATCH[p.color][mi]}${eventBonus(p, mi) ? ` + <b class="ev ${EVENT.primary.includes(decorBase(p)) ? "primary" : "secondary"}">${eventBonus(p, mi)}</b>` : ""}</span>
       <span class="sq-pow">${v}</span></li>`).join("") + `</ol>`;
-  $("squad").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) $("squad").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 $("pilze").addEventListener("click", e => {
   const b = e.target.closest("button.pow"); if (!b) return;
-  document.querySelectorAll("#pilze button.pow").forEach(x => x.setAttribute("aria-pressed", x === b));
   showSquad(+b.dataset.m, +b.dataset.h);
 });
+renderEvent();
 pilze();
 
 $("matrix-sum").addEventListener("click", e => {
