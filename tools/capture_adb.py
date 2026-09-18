@@ -14,6 +14,7 @@ import argparse
 import datetime as dt
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -204,6 +205,26 @@ def card_key(lines, height):
                  and ("Pikmin" in t or LANG["steps"] in t or LANG["discovered"] in t))
 
 
+def card_digits(key):
+    """Digits of steps and discovery date - what tells twin cards apart."""
+    return re.sub(r"\D", "", " ".join(t for t in key if LANG["steps"] in t or LANG["discovered"] in t))
+
+
+def same_card(img, sig, key, out_dir):
+    """Does img still show the card with this signature and text? Twins - same type, decor,
+    place and day, e.g. red Sticker Pikmin from one street - look alike down to a few step
+    digits, so when the images match, the steps and date read from the screen decide."""
+    if not same(signature(img), sig):
+        return False
+    if not key:
+        return True
+    path = out_dir / "_check.png"
+    img.save(path)
+    lines = ocr(path)
+    path.unlink()
+    return card_digits(card_key(lines, img.height)) == card_digits(key)
+
+
 def swipe():
     swipe_frac(SWIPE_FROM, SWIPE_Y, SWIPE_TO, SWIPE_Y, 300)
 
@@ -292,13 +313,17 @@ def _run(out_dir, start_n, test=False):
     last = out_dir / f"{start_n - 1:03d}.png"
     if last.exists():
         # resuming: if the phone still shows the last saved card, move on first
-        last_sig = signature(Image.open(last).convert("RGB"))
-        if same(signature(screenshot()), last_sig):
+        last_img = Image.open(last).convert("RGB")
+        last_sig = signature(last_img)
+        last_rec = [json.loads(l) for l in (out_dir / "log.jsonl").open(encoding="utf-8")
+                    if json.loads(l)["n"] == start_n - 1]
+        last_key = card_key(last_rec[-1]["lines"], last_img.height) if last_rec else ()
+        if same_card(screenshot(), last_sig, last_key, out_dir):
             print(tr(f"Karte #{start_n - 1:03d} ist schon gespeichert - wische weiter.",
                      f"Card #{start_n - 1:03d} is already saved - swiping on."), flush=True)
             swipe()
             time.sleep(SETTLE)
-            if same(signature(screenshot()), last_sig):
+            if same_card(screenshot(), last_sig, last_key, out_dir):
                 print(tr(f"Ende: nach #{start_n - 1:03d} ändert Wischen nichts mehr.",
                          f"End: swiping changes nothing after #{start_n - 1:03d}."))
                 return
@@ -311,7 +336,7 @@ def _run(out_dir, start_n, test=False):
             return
         base = sig.mean() if base is None else base
         key = card_key(lines, img.height)
-        repeat = next((i for i, s in seen if same(s, sig)), None)
+        repeat = next((i for i, s in seen if same(s, sig) and card_digits(seen_keys[i]) == card_digits(key)), None)
         if repeat is None and seen and key and key == seen_keys.get(seen[-1][0]):
             repeat = seen[-1][0]  # same text; only the floating egg button changed the image
         if repeat is not None:
@@ -337,7 +362,7 @@ def _run(out_dir, start_n, test=False):
                 return
             swipe()
             time.sleep(SETTLE)
-            if not same(signature(screenshot()), sig):
+            if not same_card(screenshot(), sig, key, out_dir):
                 break
         else:
             print(tr(f"Ende: nach #{n:03d} ändert Wischen nichts mehr. {n - start_n + 1} Pikmin erfasst.",
@@ -347,6 +372,24 @@ def _run(out_dir, start_n, test=False):
         if test and n > start_n + 1:
             print(tr("Test fertig.", "Test done."))
             return
+
+
+def earlier_shot(card, others):
+    """The earlier shot of the same Pikmin: same name, colour, day and place (twins from one day
+    differ only there), steps the same or a little more. None = a card not in the run yet."""
+    from diff_capture import is_coords, sim
+    target, best = None, None
+    for other in others:
+        gain = int(card["steps"] or 0) - int(other["steps"] or 0)
+        if (other["date"], other["color"], other["name"]) != (card["date"], card["color"], card["name"])                 or not 0 <= gain <= 5000:
+            continue
+        coords = is_coords(other["location"]) or is_coords(card["location"])  # names load late
+        place = 0.5 if coords else sim(other["location"], card["location"])
+        if place < 0.8 and not coords:
+            continue
+        if best is None or (place, -gain) > best:
+            target, best = int(other["n"]), (place, -gain)
+    return target
 
 
 def single(run_dir):
@@ -374,14 +417,8 @@ def single(run_dir):
         others = list(csv.DictReader(parsed.open(encoding="utf-8"), delimiter="\t"))
     else:
         others = [parse_card(run_dir, r) for r in recs if r["n"] != tmp]
-    target = None
-    for other in others:
-        other["n"] = int(other["n"])
-        if (other["date"], other["color"], other["name"]) == (card["date"], card["color"], card["name"]) \
-                and abs(int(other["steps"] or 0) - int(card["steps"] or 0)) <= 5000:
-            if target is None or abs(int(other["steps"] or 0) - int(card["steps"] or 0)) < target[1]:
-                target = (other["n"], abs(int(other["steps"] or 0) - int(card["steps"] or 0)))
-    n = target[0] if target else max(r["n"] for r in recs) + 1
+    target = earlier_shot(card, others)
+    n = target if target else max(r["n"] for r in recs) + 1
 
     for suffix in ("", "_b"):
         src = run_dir / f"{tmp}{suffix}.png"
