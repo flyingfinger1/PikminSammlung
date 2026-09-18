@@ -23,6 +23,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).parent))
+from lang import LANGS, detect  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 OCR_PS1 = ROOT / "tools" / "ocr.ps1"
 ADB_FALLBACK = (Path.home() / "AppData/Local/Microsoft/WinGet/Packages"
@@ -37,6 +40,7 @@ SAME_CARD = 8.0                       # max row diff (gray, 216px wide) for "sam
 DIM_DROP = 40                         # card this much darker than the first = dialog on top
 RETRIES_UNREADABLE = 5
 RETRIES_SWIPE = 3
+LANG = LANGS["de"]  # game language, detected from the first card of a run
 
 
 def adb_path():
@@ -129,9 +133,9 @@ def same(a, b):
     return np.abs(a - b).mean(axis=1).max() < SAME_CARD
 
 
-def ocr(path):
+def ocr(path, lang=None):
     out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                          "-File", str(OCR_PS1), str(path)], capture_output=True)
+                          "-File", str(OCR_PS1), str(path), (lang or LANG)["ocr"]], capture_output=True)
     lines = []
     for raw in out.stdout.decode("utf-8", "replace").splitlines():
         y, _, text = raw.partition("\t")
@@ -144,16 +148,15 @@ def readable(lines, height):
     """Card fields present below the model: name, steps, discovery date."""
     card = [t for y, t in lines if y > height * CARD_TOP]
     text = " ".join(card)
-    missing = [k for k, needle in (("Name", "Pikmin"), ("Schritte", "Schritte"),
-                                   ("Entdeckt", "Entdeckt")) if needle not in text]
-    return missing
+    return [k for k, needle in (("Name", "Pikmin"), ("Schritte", LANG["steps"]),
+                                ("Entdeckt", LANG["discovered"])) if needle not in text]
 
 
 def card_key(lines, height):
     """Name, steps and discovery date of a card - the floating egg button over the location
     text changes the image of an unchanged card, but not these lines."""
     return tuple(t for y, t in lines if height * CARD_TOP < y < SCROLLED_Y
-                 and ("Pikmin" in t or "Schritte" in t or "Entdeckt" in t))
+                 and ("Pikmin" in t or LANG["steps"] in t or LANG["discovered"] in t))
 
 
 def swipe():
@@ -175,6 +178,20 @@ def reveal_lower_card(out_dir, n):
     swipe_frac(0.5, 0.491, 0.5, 0.748, 600)
     time.sleep(1.2)
     return lines
+
+
+def detect_language(out_dir):
+    """Set LANG from the open card: OCR it once, the card words work with either OCR language."""
+    global LANG
+    path = out_dir / "_lang.png"
+    screenshot().save(path)
+    code = detect(ocr(path, LANGS["de"]))
+    path.unlink()
+    if code is None:
+        sys.exit("Keine Pikmin-Detailansicht erkannt (Sprache unklar). Karte öffnen und nochmal.")
+    LANG = LANGS[code]
+    print(f"Spielsprache: {code}", flush=True)
+    return code
 
 
 def capture_checked(out_dir, n, base_brightness):
@@ -215,6 +232,7 @@ def _run(out_dir, start_n, test=False):
         sys.exit(f"Pikmin Bloom ist nicht im Vordergrund: {front}")
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"Ordner: {out_dir}", flush=True)
+    code = detect_language(out_dir)
     log = (out_dir / "log.jsonl").open("a", encoding="utf-8")
     seen = []
     seen_keys = {}
@@ -250,7 +268,8 @@ def _run(out_dir, start_n, test=False):
         seen.append((n, sig))
         seen_keys[n] = key
         name = next((t for y, t in lines if "Pikmin" in t), "?")
-        log.write(json.dumps({"n": n, "lines": lines, "device": list(DEVICE)}, ensure_ascii=False) + "\n")
+        log.write(json.dumps({"n": n, "lines": lines, "device": list(DEVICE), "lang": code},
+                             ensure_ascii=False) + "\n")
         log.flush()
         print(f"#{n:03d} {name}", flush=True)
         if test:
@@ -280,13 +299,14 @@ def single(run_dir):
     ensure_device()
     if PACKAGE_HINT not in foreground_app().lower():
         sys.exit("Pikmin Bloom ist nicht im Vordergrund.")
+    code = detect_language(run_dir)
     tmp = 999
     for stale in run_dir.glob(f"{tmp}*.png"):
         stale.unlink()
     img, _, lines = capture_checked(run_dir, tmp, None)
     if img is None:
         sys.exit("Karte nicht lesbar - Popup schließen und nochmal.")
-    card = parse_card(run_dir, {"n": tmp, "lines": lines})
+    card = parse_card(run_dir, {"n": tmp, "lines": lines, "device": list(DEVICE), "lang": code})
 
     log_path = run_dir / "log.jsonl"
     recs = [json.loads(l) for l in log_path.open(encoding="utf-8")]
@@ -312,7 +332,8 @@ def single(run_dir):
             dst.unlink()
         if src.exists():
             src.rename(dst)
-    recs = [r for r in recs if r["n"] not in (n, tmp)] + [{"n": n, "lines": lines, "source": "single", "device": list(DEVICE)}]
+    recs = [r for r in recs if r["n"] not in (n, tmp)] + [{"n": n, "lines": lines, "source": "single",
+                                                          "device": list(DEVICE), "lang": code}]
     recs.sort(key=lambda r: r["n"])
     with log_path.open("w", encoding="utf-8") as f:
         for r in recs:

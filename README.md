@@ -16,15 +16,16 @@ script pages through the Pikmin detail view over **ADB**, reads each card with t
 **Windows OCR** and turns the result into a static page. A small server hosts that page; new
 data is uploaded with a token, so updates need no rebuild.
 
-> The page and all messages are in **German**, matching the German game texts the scripts read.
+> The game can be set to **German or English** while scanning. The page and all messages are in
+> **German** for now.
 
 ## Requirements
 
-- **Windows 10/11** with the German OCR language (Windows OCR via PowerShell is used for text
-  recognition) and **Python 3.12+** with the packages from `requirements.txt`
+- **Windows 10/11** with the OCR language of your game language installed (German or English;
+  Windows OCR via PowerShell is used for text recognition) and **Python 3.12+** with the packages from `requirements.txt`
   (`py -m pip install -r requirements.txt`)
 - **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`
-- An **Android phone** with USB debugging enabled and Pikmin Bloom set to **German**.
+- An **Android phone** with USB debugging enabled and Pikmin Bloom set to **German or English**.
   Screenshots are scaled to a width of 1080 px, so other resolutions work too; tested with
   720 × 1560, 1080 × 2340, 1080 × 2400 and 1440 × 3120. Below ~1000 px width, steps and dates are
   read from enlarged crops.
@@ -65,6 +66,11 @@ because it contains where your Pikmin were found.
 4. `apply_capture.py` – writes `data/pikmin.tsv` and recuts all portraits (`web/thumbs.jpg`)
 5. `build_page.py` – `data/pikmin.tsv` → `data/pikmin.json`, `data/pikmin.csv`, `web/index.html`
 6. `publish.py` – uploads the page to the server
+
+The game language is detected from the first card of a scan. The collection keeps the German game
+names as canonical names, so scans in both languages match the same Pikmin; `tools/lang.py`
+translates English cards (places, decor, colours, dates). Decor whose German name is not known yet
+keeps its English name – add the pair to `ENGLISH["decor"]` in `tools/lang.py`.
 
 `extract_frames.py`, `make_sheets.py` and `make_thumbs.py` belong to the older workflow that read a
 screen recording instead of using ADB.

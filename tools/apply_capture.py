@@ -20,6 +20,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y  # noqa: E402
+from lang import LANGS  # noqa: E402
 from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -108,7 +109,8 @@ def main():
     button_y = {}
     for line in (run / "log.jsonl").open(encoding="utf-8"):
         rec = json.loads(line)
-        ys = [y for y, t in rec["lines"] if "Gruppe" in t and y < SCROLLED_Y]
+        squad = LANGS[rec.get("lang", "de")]["squad"]
+        ys = [y for y, t in rec["lines"] if squad in t and y < SCROLLED_Y]
         if ys:
             button_y[rec["n"]] = ys[0]
     for frame, cap in source.items():

@@ -18,6 +18,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y, ocr  # noqa: E402
+from lang import EN_STEPS, LANGS, en_date, en_decor, en_location, en_name, en_spot  # noqa: E402
 
 COLORS = {"Rot": "Rot", "Gelb": "Gelb", "Blau": "Blau", "Lila": "Lila", "Weiß": "Weiß",
           "Fels": "Fels", "Flügel": "Flügel", "Eis": "Eis"}
@@ -46,11 +47,16 @@ KNOWN_SPOTS = sorted(_SEEN_SPOTS | {
 
 def steps_text(t):
     t = t.replace(" ", "")
-    t = re.sub(r"^[OoD](?=Schritte)", "0", t)  # a lone 0 read as the letter O
+    t = re.sub(r"^[OoD](?=Schritte|steps)", "0", t)  # a lone 0 read as the letter O
     for _ in range(3):  # "27.1OO" -> "27.100"
-        t = re.sub(r"(?<=[\d.])[OoD]", "0", t)
-        t = re.sub(r"(?<=[\d.])[lI|]", "1", t)
+        t = re.sub(r"(?<=[\d.,])[OoD]", "0", t)
+        t = re.sub(r"(?<=[\d.,])[lI|]", "1", t)
     return t
+
+
+def read_steps(t, L):
+    m = (EN_STEPS if L["code"] == "en" else STEPS).fullmatch(steps_text(t))
+    return int(re.sub(r"[.,]", "", m.group(1))) if m else None
 
 
 def known_spot(spot):
@@ -132,14 +138,14 @@ def read_star(img, name_top, name_bottom):
     return yellow > 150
 
 
-def steps_fallback(path, steps_y, tmp):
+def steps_fallback(path, steps_y, tmp, L):
     img = Image.open(path)
     crop = img.crop((560, max(steps_y - 25, 0), 1070, steps_y + 75))
     crop.resize((crop.width * 3, crop.height * 3), Image.LANCZOS).save(tmp)
-    for _, t in ocr(tmp):
-        m = STEPS.fullmatch(steps_text(t))
-        if m:
-            return int(m.group(1).replace(".", ""))
+    for _, t in ocr(tmp, L):
+        steps = read_steps(t, L)
+        if steps is not None:
+            return steps
     return None
 
 
@@ -161,7 +167,9 @@ def month_from_weekday(wd, day, year):
     return hits[0].isoformat() if len(hits) == 1 else None
 
 
-def parse_date(text):
+def parse_date(text, L=LANGS["de"]):
+    if L["code"] == "en":
+        return en_date(text)
     t = re.sub(r"(\d)\s+(?=[\d.])", r"\1", text)   # "1 1 . Sep" -> "11. Sep"
     t = re.sub(r"\s+\.", ".", t)
     dm = DATE.search(t)
@@ -175,12 +183,12 @@ def parse_date(text):
     return f"{dm.group(3)}-{month:02d}-{day:02d}"
 
 
-def date_fallback(path, y, tmp):
+def date_fallback(path, y, tmp, L):
     img = Image.open(path)
     crop = img.crop((230, max(y - 25, 0), 1000, y + 75))
     crop.resize((crop.width * 3, crop.height * 3), Image.LANCZOS).save(tmp)
-    text = " ".join(t for _, t in ocr(tmp))
-    return parse_date(text if "Entdeckt" in text else "Entdeckt: " + text)
+    text = " ".join(t for _, t in ocr(tmp, L))
+    return parse_date(text if L["discovered"] in text else L["discovered"] + ": " + text, L)
 
 
 def parse_card(run, rec):
@@ -189,40 +197,45 @@ def parse_card(run, rec):
     main = sorted([(y, t) for y, t in lines if y < SCROLLED_Y], key=lambda l: l[0])
     lower = sorted([(y - SCROLLED_Y, t) for y, t in lines if y >= SCROLLED_Y], key=lambda l: l[0])
     problems = []
-    group = any("Aus der Gruppe" in t for _, t in main)
+    L = LANGS[rec.get("lang", "de")]
+    en = L["code"] == "en"
+    group = any(L["in_squad"] in t for _, t in main)
 
-    button_y = next((y for y, t in main if "Gruppe" in t), 990)
-    rename_y = next((y for y, t in main if "Namen" in t), None)
-    name_lines = [(y, t) for y, t in main if button_y < y < (rename_y or 0) - 30 and "teilen" not in t]
+    button_y = next((y for y, t in main if L["squad"] in t), 990)
+    rename_y = next((y for y, t in main if L["rename"] in t), None)
+    name_lines = [(y, t) for y, t in main if button_y < y < (rename_y or 0) - 30 and L["share"] not in t]
     name = ""
     for _, t in name_lines:
         t = t.strip()
-        if name and (name.endswith("-") or (name[-1].isalpha() and t[:1].islower())):
+        if name and (name.endswith("-") or (name[-1].isalpha() and t[:1].islower()
+                                             and not (en and t.startswith("from ")))):
             name += t                      # word broken across lines: "-Pik" + "min", "Anstecknadel-" + "Pikmin"
         else:
             name += (" " if name else "") + t
-    bm = BASE.match(name)
-    base = re.sub(r"-\s+Pikmin", "-Pikmin", bm.group(1)) if bm else name
-    rest = name[len(bm.group(1)):].strip() if bm else ""
-    origin = rest.split(" ", 1)[1].strip() if " " in rest else ""  # drop the mangled "aus"
-
-    m = re.match(r"^(.+?)-Pikmin \(([^)]+)\)", base)
-    if m:
-        decor, color = m.group(1).strip(), m.group(2).strip().capitalize()
-        base = f"{decor}-Pikmin ({color})"
+    if en:
+        base, decor, color, origin = en_name(name) or (name, None, None, "")
     else:
-        p = re.match(r"^(Rotes|Gelbes|Blaues|Lila|Weißes|Fels|Flügel|Eis)[ -]Pikmin", base)
-        decor, color = None, PLAIN.get(p.group(1)) if p else None
+        bm = BASE.match(name)
+        base = re.sub(r"-\s+Pikmin", "-Pikmin", bm.group(1)) if bm else name
+        rest = name[len(bm.group(1)):].strip() if bm else ""
+        origin = rest.split(" ", 1)[1].strip() if " " in rest else ""  # drop the mangled "aus"
+
+        m = re.match(r"^(.+?)-Pikmin \(([^)]+)\)", base)
+        if m:
+            decor, color = m.group(1).strip(), m.group(2).strip().capitalize()
+            base = f"{decor}-Pikmin ({color})"
+        else:
+            p = re.match(r"^(Rotes|Gelbes|Blaues|Lila|Weißes|Fels|Flügel|Eis)[ -]Pikmin", base)
+            decor, color = None, PLAIN.get(p.group(1)) if p else None
     if color not in COLORS:
         problems.append(f"Farbe? '{base}'")
 
-    steps_line = next(((y, t) for y, t in main if "Schritte" in t), None)
+    steps_line = next(((y, t) for y, t in main if L["steps"] in t), None)
     steps = None
     if steps_line:
-        m = STEPS.fullmatch(steps_text(steps_line[1]))
-        steps = int(m.group(1).replace(".", "")) if m else None
+        steps = read_steps(steps_line[1], L)
         if steps is None or (rec.get("device") and rec["device"][0] < 1000):  # small text: read enlarged
-            steps = steps_fallback(run / f"{n:03d}.png", steps_line[0], run / "_steps_tmp.png") or steps
+            steps = steps_fallback(run / f"{n:03d}.png", steps_line[0], run / "_steps_tmp.png", L) or steps
             if steps is None:
                 problems.append(f"Schritte? '{steps_line[1]}'")
     else:
@@ -234,15 +247,21 @@ def parse_card(run, rec):
 
     # card block below the steps; the spot line ("Wald / Eichelhut" or just "Park") comes first
     card = [(y, t) for y, t in main if steps_line and y > steps_line[0] + 100]
-    date_i = next((i for i, (_, t) in enumerate(card) if "Entdeckt" in t), None)
+    date_i = next((i for i, (_, t) in enumerate(card) if L["discovered"] in t), None)
     body = [t for _, t in (card[:date_i] if date_i is not None else card)
-            if t != "O" and "Freundschaft" not in t and "gelaufen" not in t]
+            if t != "O" and L["friendship"] not in t and L["walked"] not in t]
     if len(body) > 1 and body[0].rstrip().endswith("/"):
         body = [body[0].rstrip() + " " + body[1]] + body[2:]  # "Universität & College /" + "Uni-Wappen Aufnäher"
     spot_line = body[0] if body else ""
     spot_part, sep, spot_decor = spot_line.rpartition(" / ")
     spot, spot_decor = (spot_part, spot_decor) if sep else (spot_line, "")  # "Bibliothek/Bücherladen" has its own slash
     spot, spot_decor = spot.strip(), spot_decor.strip()
+    if en:
+        known = en_spot(spot)
+        if spot and not known:  # add it to ENGLISH["spots"] in tools/lang.py
+            problems.append(f"Ort unbekannt: '{spot}'")
+        spot = known or spot
+        spot_decor = en_decor(spot_decor) if spot_decor else ""
     spot, _ = known_spot(spot)  # OCR: "BOUtiCIUe" -> "Boutique"; spot_line stays raw for matching
     location = " ".join(body[1:])
     def date_line(block, i):
@@ -259,7 +278,7 @@ def parse_card(run, rec):
         li = next((i for i, (_, t) in enumerate(lower) if t.strip() and spot_line.startswith(t.strip())), None)
         if li is not None and li + 1 < len(lower) and lower[li][1].rstrip().endswith("/"):
             li += 1  # wrapped spot line in the scrolled shot as well
-        ld = next((i for i, (_, t) in enumerate(lower) if "Entdeckt" in t), None)
+        ld = next((i for i, (_, t) in enumerate(lower) if L["discovered"] in t), None)
         if ld is not None:
             date_text, date_y = date_line(lower, ld)
             date_img = run / f"{n:03d}_b.png"
@@ -267,10 +286,12 @@ def parse_card(run, rec):
                 location = " ".join(t for _, t in lower[li + 1:ld])
             else:
                 problems.append("Fundort evtl. abgeschnitten")
-    date = parse_date(date_text)
+    if en:
+        location = en_location(location)
+    date = parse_date(date_text, L)
     lowres = rec.get("device") and rec["device"][0] < 1000  # upscaled screenshot: small text
     if (lowres or not date) and date_y is not None:
-        date = date_fallback(date_img, date_y, run / "_date_tmp.png") or date
+        date = date_fallback(date_img, date_y, run / "_date_tmp.png", L) or date
     if not date:
         problems.append(f"Datum? '{date_text}'")
     if decor and spot_decor and decor != spot_decor:
