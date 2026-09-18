@@ -176,6 +176,13 @@ h1 {
 .rare-badge.has { color: var(--gold); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 65%, var(--surface)); }
 .matrix tbody tr.rare th[scope="row"] { box-shadow: inset 4px 0 0 var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--surface)); }
 .matrix tbody tr.has-rare th[scope="row"] { box-shadow: inset 4px 0 0 color-mix(in srgb, var(--gold) 45%, var(--surface)); }
+.matrix-sum { display: flex; flex-wrap: wrap; gap: 10px 36px; margin: 0 2px 14px; }
+.matrix-sum div { display: grid; }
+.matrix-sum dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.matrix-sum dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+.matrix tfoot th, .matrix tfoot td { border-top: 2px solid var(--line); border-bottom: 0; }
+.matrix tfoot th { text-align: left; padding: 10px 14px; font-weight: 700; }
+.matrix tfoot th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
 .matrix-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 2px 0; font-size: 13px; color: var(--muted); list-style: none; padding: 0; }
 .matrix-legend li { display: flex; align-items: center; gap: 4px; }
 .matrix tbody tr.cat th {
@@ -248,13 +255,14 @@ h1 {
   <main>
     <section id="view-grid"><div class="grid" id="grid"></div></section>
     <section id="view-matrix" hidden>
+      <dl class="matrix-sum" id="matrix-sum"></dl>
       <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
       <ul class="matrix-legend">
         <li><span class="rare-badge rare">✦ selten</span> seltene Deko</li>
         <li><span class="rare-badge has">✦</span> zu dieser Deko gibt es eine seltene Variante</li>
         <li>ohne Zeichen: keine seltene Variante (laut Pikmin-Wiki)</li>
       </ul>
-      <p class="matrix-note">Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
+      <p class="matrix-note">„Offen“ = fehlende Farben, für die schon ein passendes Pikmin da ist (Spalte „Kandidaten“). Reihenfolge wie die Deko-Sammlung im Spiel. Zahlen = Deko-Pikmin je Deko und Farbe. ○ = fehlt noch, aber ein Kandidat ist da: bei normaler Deko ein Pikmin ohne Deko mit diesem Fundort und dieser Farbe, bei seltener Deko ein Pikmin mit der normalen Deko in dieser Farbe. Ein Klick auf ein Feld zeigt die passenden Pikmin. „–“ = diese Farbe gibt es für die Deko nicht (ältere Sets ohne Eis-Pikmin). Sticker zählt das Spiel als drei Motive, die Namen unterscheiden sie aber nicht.</p>
     </section>
   </main>
 </div>
@@ -481,7 +489,19 @@ function matrix() {
     return place + `<tr class="${badge.cls}"><th scope="row">${esc(k)}${badge.html}<small>${sub}</small></th>${cells}` +
       `<td class="total">${list.length}</td><td class="total${open ? " open" : ""}">${open || "–"}</td></tr>`;
   }).join("");
-  $("matrix").innerHTML = head + `<tbody>${body}</tbody>`;
+  // open candidates = missing colours for which a fitting Pikmin already exists (column "Kandidaten")
+  const sum = list => list.reduce((s, r) => s + r.open, 0);
+  const openRare = sum(rows.filter(r => baseOf(r.k)));
+  const openNormal = sum(rows.filter(r => !baseOf(r.k)));
+  const decorTotal = rows.reduce((s, r) => s + r.list.length, 0);
+  const foot = `<tfoot><tr><th scope="row">Summe<small>offene Kandidaten gesamt</small></th>` +
+    `<td colspan="8"></td><td class="total">${decorTotal}</td><td class="total open">${openNormal + openRare}</td></tr></tfoot>`;
+  $("matrix").innerHTML = head + `<tbody>${body}</tbody>` + foot;
+  $("matrix-sum").innerHTML = [
+    ["Offen · normale Deko", openNormal],
+    ["Offen · seltene Deko", openRare],
+    ["Offen · gesamt", openNormal + openRare]
+  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
 }
 
 function render() {
