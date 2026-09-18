@@ -180,6 +180,8 @@ def parse_date(text, L=LANGS["de"]):
     day = int(dm.group(1))
     if not month or not 1 <= day <= 31:
         return None
+    if int(dm.group(3)) < 2021:  # before the game existed: misread year, read the crop again
+        return None
     return f"{dm.group(3)}-{month:02d}-{day:02d}"
 
 
@@ -189,6 +191,9 @@ def date_fallback(path, y, tmp, L):
     crop.resize((crop.width * 3, crop.height * 3), Image.LANCZOS).save(tmp)
     text = " ".join(t for _, t in ocr(tmp, L))
     return parse_date(text if L["discovered"] in text else L["discovered"] + ": " + text, L)
+
+
+EGG = re.compile(r"\d{1,3}")  # counter on the floating egg button, read as a line of its own
 
 
 def parse_card(run, rec):
@@ -249,7 +254,7 @@ def parse_card(run, rec):
     card = [(y, t) for y, t in main if steps_line and y > steps_line[0] + 100]
     date_i = next((i for i, (_, t) in enumerate(card) if L["discovered"] in t), None)
     body = [t for _, t in (card[:date_i] if date_i is not None else card)
-            if t != "O" and L["friendship"] not in t and L["walked"] not in t]
+            if t != "O" and not EGG.fullmatch(t) and L["friendship"] not in t and L["walked"] not in t]
     if len(body) > 1 and body[0].rstrip().endswith("/"):
         body = [body[0].rstrip() + " " + body[1]] + body[2:]  # "Universität & College /" + "Uni-Wappen Aufnäher"
     spot_line = body[0] if body else ""
@@ -262,6 +267,10 @@ def parse_card(run, rec):
             problems.append(f"Ort unbekannt: '{spot}'")
         spot = known or spot
         spot_decor = en_decor(spot_decor) if spot_decor else ""
+        if decor and spot_decor and decor != spot_decor and \
+                difflib.SequenceMatcher(None, decor.lower(), spot_decor.lower()).ratio() > 0.8:
+            decor = spot_decor  # OCR slip in the big name ("WUrst"): the card line says the same
+            base = f"{decor}-Pikmin ({color})"
     spot, _ = known_spot(spot)  # OCR: "BOUtiCIUe" -> "Boutique"; spot_line stays raw for matching
     location = " ".join(body[1:])
     def date_line(block, i):
@@ -283,7 +292,7 @@ def parse_card(run, rec):
             date_text, date_y = date_line(lower, ld)
             date_img = run / f"{n:03d}_b.png"
             if li is not None and li < ld:
-                location = " ".join(t for _, t in lower[li + 1:ld])
+                location = " ".join(t for _, t in lower[li + 1:ld] if not EGG.fullmatch(t))
             else:
                 problems.append("Fundort evtl. abgeschnitten")
     if en:

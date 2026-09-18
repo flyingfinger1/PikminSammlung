@@ -36,7 +36,7 @@ ENGLISH = {
         "Airport": "Flughafen", "Station": "Bahnhof", "Beach": "Strand",
         "Burger Place": "Burger-Bistro", "Mini-mart": "Eckladen", "Supermarket": "Supermarkt",
         "Bakery": "Bäckerei", "Hair Salon": "Friseur", "Clothes Store": "Boutique", "Park": "Park",
-        "Library": "Bibliothek/Bücherladen", "Roadside": "Straße",
+        "Library & Bookstore": "Bibliothek/Bücherladen", "Roadside": "Straße",
         "Sushi Restaurant": "Sushi-Restaurant", "Mountain": "Berg", "Stadium": "Stadion",
         "Rainy Day": "Regentag", "Snowy Day": "Schneetag", "Theme Park": "Themenpark",
         "Bus Stop": "Bushaltestelle", "Italian Restaurant": "Italienisches Restaurant",
@@ -62,6 +62,10 @@ ENGLISH = {
         "Makeup": "Kosmetik", "Curry Bowl": "Curry-Schale", "Tool": "Werkzeug",
         "College Crest Patch": "Uni-Wappen Aufnäher", "Stationery": "Schreibwaren",
         "Leaf Hat": "Blatthut",
+        # special decor (Extra)
+        "Balinese Carving": "Bali-Schnitzerei", "Fall Sticker": "Herbststicker",
+        "Mooncake": "Mondkuchen", "Pacifier": "Schnuller", "Shaved Ice": "Shaved Ice",
+        "Wurst": "Wurst",
     },
 }
 
@@ -145,10 +149,12 @@ def en_date(text):
     day = int(m.group(3))
     if not month:
         return None
-    if m.group(4):
-        year = int(m.group(4))
-    else:
-        wd = EN_WEEKDAYS.get(m.group(1).capitalize())
+    wd = EN_WEEKDAYS.get(m.group(1).capitalize())
+    year = int(m.group(4)) if m.group(4) else None
+    if year is not None and not (2021 <= year and _valid(year, month, day)
+                                 and datetime.date(year, month, day).weekday() == wd):
+        year = None  # misread ("2026" as "2020"): the weekday decides
+    if year is None:
         today = datetime.date.today()
         year = next((y for y in range(today.year, 2020, -1)  # the game started in 2021
                      if _valid(y, month, day) and datetime.date(y, month, day) <= today
