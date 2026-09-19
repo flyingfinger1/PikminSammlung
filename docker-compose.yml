@@ -1,6 +1,6 @@
 services:
-  pikmin-sammlung:
-    image: ghcr.io/flyingfinger1/pikminsammlung:latest
+  pikmin-herbarium:
+    image: ghcr.io/flyingfinger1/pikmin-herbarium:latest
     restart: unless-stopped
     env_file: .env   # UPLOAD_TOKEN (+ optional VIEW_USER/VIEW_PASSWORD) - see .env.example
     volumes:

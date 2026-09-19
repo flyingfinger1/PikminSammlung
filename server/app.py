@@ -64,7 +64,7 @@ def same(a, b):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "PikminSammlung"
+    server_version = "PikminHerbarium"
     sys_version = ""
 
     def log_message(self, format, *args):

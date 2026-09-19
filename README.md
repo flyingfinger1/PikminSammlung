@@ -32,7 +32,7 @@ data is uploaded with a token, so updates need no rebuild.
 - **Windows 10/11** with the OCR language of your game language installed (German or English;
   Windows OCR via PowerShell is used for text recognition)
 - either the **Windows app** – no Python needed: download `PikminHerbarium-<version>.zip` from the
-  [releases](https://github.com/flyingfinger1/PikminSammlung/releases), unzip it and start
+  [releases](https://github.com/flyingfinger1/pikmin-herbarium/releases), unzip it and start
   `PikminHerbarium.exe` – or **Python 3.12+** with the packages from `requirements.txt`
   (`py -m pip install -r requirements.txt`)
 - **Android Platform-Tools** (`adb`), e.g. `winget install Google.PlatformTools`; if it is missing,
@@ -106,7 +106,7 @@ from the [Pikmin Wiki](https://www.pikminwiki.com/Decor_Pikmin) ([mushroom battl
 ## Server
 
 A small Python server (`server/app.py`, standard library only), published as Docker image
-`ghcr.io/flyingfinger1/pikminsammlung`:
+`ghcr.io/flyingfinger1/pikmin-herbarium`:
 
 - `GET /` – the page; public unless `VIEW_USER` and `VIEW_PASSWORD` are set (then Basic Auth).
   Responses carry `X-Robots-Tag: noindex` so search engines do not list the page
@@ -128,15 +128,15 @@ one of these ways:
 **Plain, without a reverse proxy** – the page on port 8080 of the host:
 
 ```bash
-docker run -d --name pikmin-sammlung --restart unless-stopped --env-file .env -p 8080:8080 -v pikmin-data:/data ghcr.io/flyingfinger1/pikminsammlung:latest
+docker run -d --name pikmin-herbarium --restart unless-stopped --env-file .env -p 8080:8080 -v pikmin-data:/data ghcr.io/flyingfinger1/pikmin-herbarium:latest
 ```
 
 or as `docker-compose.yml`:
 
 ```yaml
 services:
-  pikmin-sammlung:
-    image: ghcr.io/flyingfinger1/pikminsammlung:latest
+  pikmin-herbarium:
+    image: ghcr.io/flyingfinger1/pikmin-herbarium:latest
     restart: unless-stopped
     env_file: .env
     volumes:

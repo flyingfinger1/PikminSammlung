@@ -34,7 +34,7 @@ Settings (copy the example and edit it):
 Windows may warn on the first start because the app is not signed:
 "More info" -> "Run anyway".
 
-Full documentation: https://github.com/flyingfinger1/PikminSammlung
+Full documentation: https://github.com/flyingfinger1/pikmin-herbarium
 """
 
 
