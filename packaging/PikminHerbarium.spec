@@ -9,6 +9,7 @@ a = Analysis(
     datas=[
         (str(ROOT / "tools" / "ocr.ps1"), "tools"),
         (str(ROOT / "web" / "template.html"), "web"),
+        (str(ROOT / "web" / "fonts"), "web/fonts"),
     ],
     excludes=["tkinter", "unittest", "pydoc_data"],
 )

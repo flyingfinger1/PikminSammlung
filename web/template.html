@@ -2,9 +2,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- favicon: a Pikmin bloom, pressed like in a herbarium; inline so the server needs no extra file -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22%232E8B57%22/%3E%3Cpath d=%22M32 58V31%22 stroke=%22%23E8F5DD%22 stroke-width=%225%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M31 47c-9 1-15-4-16-11 8-1 14 3 16 11z%22 fill=%22%239BD66B%22/%3E%3Cg fill=%22%23F7A8BE%22%3E%3Ccircle cx=%2232%22 cy=%2212%22 r=%228%22/%3E%3Ccircle cx=%2241.5%22 cy=%2218.9%22 r=%228%22/%3E%3Ccircle cx=%2237.9%22 cy=%2230.1%22 r=%228%22/%3E%3Ccircle cx=%2226.1%22 cy=%2230.1%22 r=%228%22/%3E%3Ccircle cx=%2222.5%22 cy=%2218.9%22 r=%228%22/%3E%3C/g%3E%3Ccircle cx=%2232%22 cy=%2222%22 r=%226%22 fill=%22%23F2C230%22/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<!-- fonts (Figtree, Bricolage Grotesque; SIL OFL, web/fonts/) are embedded by build_page.py: no request leaves the page -->
+<style>/*FONTS*/</style>
 <style>
 :root {
   --ground: #F2F5EE;
@@ -714,7 +713,7 @@ function card(p) {
       <h2 class="name">${esc(pname(p))}</h2>
       <div class="meta"><span class="tag"><span class="dot" style="--c:${cvar[p.color]}"></span>${tColor(p.color)}</span>${decorTag}</div>
       <div class="row">${hearts(p)}<span class="steps">${fmt(p.steps)} ${T.steps}</span></div>
-      <div class="where"><span>${esc(tLoc(p.location))}</span><span>${esc(tSpot(p.spot))} · ${T.found(showDate(p.date))}</span></div>
+      <div class="where">${p.location ? `<span>${esc(tLoc(p.location))}</span>` : ""}<span>${esc(tSpot(p.spot))} · ${T.found(showDate(p.date))}</span></div>
     </div>
   </article>`;
 }
@@ -1030,7 +1029,7 @@ function seedsView() {
     return `<div class="seed-group"><h3>${T.seedGroups[g]} <small>${list.length} · ${T.seedGroupSub[g]}</small></h3><ul class="seed-list">` +
       list.map(s => `<li class="${s.kind}"><span class="dot" style="--c:${dot(s)}"></span>
         <span class="seed-name">${esc(T.seedName(s.color))} · ${esc(s.options.map(tDecor).join(" / ") || tSpot(s.spot))}
-          <small>${esc(tSpot(s.spot))} · ${esc(tLoc(s.location))} · ${showDate(s.date)}</small></span>
+          <small>${[tSpot(s.spot), tLoc(s.location)].filter(Boolean).map(esc).join(" · ")} · ${showDate(s.date)}</small></span>
         <span class="seed-grow">${T.grow(s.growHave === null ? null : fmt(s.growHave), fmt(s.growNeed || 0))}</span>
         <span class="seed-why ${advice.get(s.n).act}">${esc(advice.get(s.n).why)}</span></li>`).join("") + `</ul></div>`;
   }).join("");

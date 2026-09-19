@@ -2,6 +2,7 @@
 
 Usage: py tools/build_page.py
 """
+import base64
 import csv
 import json
 import re
@@ -81,6 +82,14 @@ def set_order():
         if name and name not in order:
             order.append(name)
     return order
+
+
+def fonts_css():
+    """web/fonts/fonts.css with its font files inlined, so the page loads no fonts from elsewhere."""
+    folder = RES / "web" / "fonts"
+    css = (folder / "fonts.css").read_text(encoding="utf-8")
+    return re.sub(r"url\(fonts/([\w.-]+\.woff2)\)", lambda m: "url(data:font/woff2;base64,"
+                  + base64.b64encode((folder / m.group(1)).read_bytes()).decode() + ")", css)
 
 
 def legal():
@@ -188,11 +197,19 @@ def main():
     order = {"spots": CATEGORY_ORDER, "sets": set_order()}
     cfg = load_config()
     config = {"rareUnlocked": cfg.get("rare_unlocked", []), "language": cfg.get("language")}
-    payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config,
-                          "names": {"en": english_names()}, "seeds": seeds(), "legal": legal()},
+    seedlings = seeds()
+    page_rows = rows
+    if cfg.get("show_locations") is False:
+        # "show_locations": false - where a Pikmin was found stays out of the page altogether
+        # (hiding it on the page would still leave it in the page source); pikmin.json keeps it
+        page_rows = [{**r, "location": "", "origin": ""} for r in rows]
+        for s in (seedlings or {}).get("list", []):
+            s["location"] = ""
+    payload = json.dumps({"pikmin": page_rows, "sprite": meta, "order": order, "config": config,
+                          "names": {"en": english_names()}, "seeds": seedlings, "legal": legal()},
                          ensure_ascii=False)
     template = (RES / "web/template.html").read_text(encoding="utf-8")
-    html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
+    html = template.replace("/*DATA*/null", payload.replace("</", "<\\/")).replace("/*FONTS*/", fonts_css())
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")
     print(f"{len(rows)} Pikmin -> data/pikmin.json, data/pikmin.csv, web/index.html")
 

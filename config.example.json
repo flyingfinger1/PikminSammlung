@@ -1,4 +1,5 @@
 {
  "rare_unlocked": ["Eichelhut (Selten)", "Hirschkäfer (Selten)"],
- "language": "de"
+ "language": "de",
+ "show_locations": true
 }

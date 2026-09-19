@@ -9,6 +9,8 @@ Environment:
   DATA_DIR                  where the page files live (default /data)
   PORT                      listen port (default 8080)
   MAX_UPLOAD_MB             per-file upload limit (default 20)
+
+Requests are logged without IP addresses.
 """
 import base64
 import hashlib
@@ -64,6 +66,10 @@ def same(a, b):
 class Handler(BaseHTTPRequestHandler):
     server_version = "PikminSammlung"
     sys_version = ""
+
+    def log_message(self, format, *args):
+        # without the client address: the log tells what happened, not who asked
+        sys.stderr.write(f"{self.log_date_time_string()} {format % args}\n")
 
     def send(self, status, body=b"", ctype="text/plain; charset=utf-8", extra=None):
         self.send_response(status)

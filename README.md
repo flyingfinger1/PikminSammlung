@@ -60,7 +60,7 @@ Pikmin in a group are a separate list – append them with option 4.
 
 | File | Content |
 |---|---|
-| `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"` for the rare Acorn); `language` (`"de"` or `"en"`, optional) is the language of the script messages and the default language of the page – without it the scripts follow the system language and the page the visitor's browser (`PIKMIN_LANG=en` overrides it for a single run) |
+| `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"` for the rare Acorn); `language` (`"de"` or `"en"`, optional) is the language of the script messages and the default language of the page – without it the scripts follow the system language and the page the visitor's browser (`PIKMIN_LANG=en` overrides it for a single run); `show_locations: false` keeps where your Pikmin and seedlings were found out of the built page (the place category and the date stay) |
 | `publish.local.json` | server URL and upload token, see `publish.example.json` |
 | `legal/imprint.html`, `legal/privacy.html` | optional legal notice and privacy policy: built into the page and linked in its footer. Start from the examples `legal/*.example*.html` (German and English; `<name>.en.html` is shown on the English page, `<name>.html` in every language). They are examples, not legal advice – check yourself what your page needs |
 
@@ -109,6 +109,9 @@ A small Python server (`server/app.py`, standard library only), published as Doc
 - `PUT /api/files/index.html|thumbs.jpg` – upload with `Authorization: Bearer <UPLOAD_TOKEN>`,
   written atomically; the previous version stays as `<name>.prev` in the volume
 - `GET /health` – no login, used by the health check
+
+Requests are logged without IP addresses. The page itself loads nothing from other servers: its
+fonts are embedded when it is built.
 
 The image contains no data; the page lives in the volume `pikmin-data`. A new image is only built
 for a GitHub release (`.github/workflows/release.yml`).
@@ -160,5 +163,6 @@ token into `publish.local.json` and publish from the menu (option 8).
 
 ## License
 
-[MIT](LICENSE). Pikmin and Pikmin Bloom are trademarks of Nintendo; this is an unofficial fan
+[MIT](LICENSE). The embedded fonts Figtree and Bricolage Grotesque (`web/fonts/`) are licensed
+under the SIL Open Font License 1.1. Pikmin and Pikmin Bloom are trademarks of Nintendo; this is an unofficial fan
 project and not affiliated with Nintendo or the developers of the game. Game data comes from the Pikmin Wiki.
