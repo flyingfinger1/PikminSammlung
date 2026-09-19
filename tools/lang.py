@@ -113,8 +113,8 @@ def en_spot(text):
 
 
 def en_location(text):
-    """As the German card writes it: "near Görtz" -> "In der Nähe: Görtz",
-    "Lessingstraße, Heidelberg" -> "Lessingstraße Heidelberg"."""
+    """As the German card writes it: "near Corner Bakery" -> "In der Nähe: Corner Bakery",
+    "Hauptstraße, Musterstadt" -> "Hauptstraße Musterstadt"."""
     text = text.strip()
     if text.lower().startswith("near "):
         return "In der Nähe: " + text[5:].strip()
@@ -122,7 +122,7 @@ def en_location(text):
 
 
 def en_name(name):
-    """"Blue Baguette Pikmin from near Görtz" -> (canonical name, decor, colour, origin)."""
+    """"Blue Baguette Pikmin from near Corner Bakery" -> (canonical name, decor, colour, origin)."""
     m = EN_NAME.match(name.strip())
     if not m:
         return None

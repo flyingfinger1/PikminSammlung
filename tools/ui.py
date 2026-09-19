@@ -58,7 +58,7 @@ def decor(d):
 
 
 def name(n):
-    """"Eichelhut-Pikmin (Rot) aus Nalbach" -> "Red Acorn Pikmin from Nalbach" for English."""
+    """"Eichelhut-Pikmin (Rot) aus Musterstadt" -> "Red Acorn Pikmin from Musterstadt" for English."""
     if UI == "de" or not n:
         return n
     base, _, origin = n.partition(" aus ")
