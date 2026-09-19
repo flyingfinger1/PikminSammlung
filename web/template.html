@@ -828,7 +828,7 @@ const available = (k, n) => {
 const RARE_UNLOCKED = (DATA.config && DATA.config.rareUnlocked) || [];
 // normal decor with a rare variant (pikminwiki.com/Decor_Pikmin, Sep 2026)
 const RARE_EXISTS = new Set(["Kochmütze", "Kaffeetasse", "Zahnpflege", "Hirschkäfer", "Eichelhut", "Köder",
-  "Ticket", "Banane", "Baguette", "Schere", "Vierblättriger Klee", "Ball-Schlüsselanhänger", "Münze"]);
+  "Ticket", "Banane", "Baguette", "Schere", "Kleeblatt", "Vierblättriger Klee", "Ball-Schlüsselanhänger", "Münze"]);
 function rareBadge(k, names) {
   if (baseOf(k)) return { cls: "rare", html: `<span class="rare-badge rare" title="${T.rareTitle}">${T.rare}</span>` };
   if (RARE_EXISTS.has(k) || names.has(k + RARE))
