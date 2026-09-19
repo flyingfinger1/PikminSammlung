@@ -114,17 +114,48 @@ for a GitHub release (`.github/workflows/release.yml`).
 
 ### Deployment
 
-`docker-compose.yml` expects the external network `caddy-net` of
-[caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy); set your domain in the
-`caddy` label, or remove the labels and network and use the port mapping instead. Next to it create
-a `.env` from `.env.example` with a long random `UPLOAD_TOKEN`, then:
+Create a `.env` from `.env.example` with a long random `UPLOAD_TOKEN`. Then run the container in
+one of these ways:
+
+**Plain, without a reverse proxy** – the page on port 8080 of the host:
+
+```bash
+docker run -d --name pikmin-sammlung --restart unless-stopped --env-file .env -p 8080:8080 -v pikmin-data:/data ghcr.io/flyingfinger1/pikminsammlung:latest
+```
+
+or as `docker-compose.yml`:
+
+```yaml
+services:
+  pikmin-sammlung:
+    image: ghcr.io/flyingfinger1/pikminsammlung:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - pikmin-data:/data
+    ports:
+      - "8080:8080"
+
+volumes:
+  pikmin-data:
+```
+
+Plain HTTP sends the upload token (and the optional login) unencrypted – fine in your home network,
+but on the internet put HTTPS in front, e.g. with any reverse proxy (Caddy, Traefik, nginx).
+
+**Behind [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy)** – HTTPS for your
+domain: the `docker-compose.yml` of this repo expects its external network `caddy-net`; set your
+domain in the `caddy` label and remove the port mapping.
+
+With Compose, start or update it with:
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-Put the same token into `publish.local.json` and publish from the menu (option 8).
+Put the server address (e.g. `http://<host>:8080` or `https://pikmin.example.com`) and the same
+token into `publish.local.json` and publish from the menu (option 8).
 
 ## License
 
