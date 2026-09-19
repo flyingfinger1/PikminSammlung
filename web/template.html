@@ -277,6 +277,17 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
   .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .name { font-size: 15px; }
 }
+.foot { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: flex; gap: 6px 18px; flex-wrap: wrap; }
+.foot a { color: var(--muted); }
+.foot a:hover { color: var(--accent); }
+.legal { max-width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 28px 32px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); }
+.legal::backdrop { background: rgb(0 0 0 / .45); }
+.legal-close { position: sticky; top: 0; float: right; margin: -12px -16px 0 12px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-2); cursor: pointer; font-size: 20px; line-height: 1; }
+.legal-body h2 { font-family: var(--display); margin: 0 0 14px; }
+.legal-body h3 { font-size: 15px; margin: 20px 0 6px; }
+.legal-body p { margin: 0 0 10px; }
+.legal-body a { color: var(--accent); }
+@media (max-width: 600px) { .legal { padding: 22px 18px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .mast-side { display: grid; justify-items: end; gap: 10px; }
 .lang { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
@@ -356,7 +367,12 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
       <p class="matrix-note" data-t-html="matrixNote"></p>
     </section>
   </main>
+  <footer class="foot" id="foot" hidden></footer>
 </div>
+<dialog class="legal" id="legal">
+  <form method="dialog"><button class="legal-close" data-t-aria="close">×</button></form>
+  <div class="legal-body" id="legal-body"></div>
+</dialog>
 
 <script>
 const DATA = /*DATA*/null;
@@ -417,6 +433,7 @@ const T = {
     eventHelp: `Deko antippen: 1× <b class="ev primary">primär</b> (+300 am Event-Pilz), 2× <b class="ev secondary">sekundär</b> (+100), 3× aus. Andere Pilze: +15.`,
     goldHearts: n => `${n}× Goldherz`, heartsN: n => `${n} ${n === 1 ? "Herz" : "Herzen"}`,
     calcTitle: ev => `Grundwert + Deko + Kopf + Freundschaft + Pilz${ev ? " + Event" : ""}`,
+    imprint: "Impressum", privacy: "Datenschutz", close: "Schließen",
     tabKeime: "Keime",
     seedsIntro: d => `Welche Keime lohnen sich jetzt? Keim-Scan vom ${d}, verglichen mit der Sammlung und der freigeschalteten seltenen Deko.`,
     seedGroups: { hatch: "Ausbrüten", maybe: "Vielleicht", wait: "Liegen lassen", planted: "Wächst schon" },
@@ -481,6 +498,7 @@ const T = {
     eventHelp: `Tap a decor: once = <b class="ev primary">primary</b> (+300 on the event mushroom), twice = <b class="ev secondary">secondary</b> (+100), three times = off. Other mushrooms: +15.`,
     goldHearts: n => `${n}× gold heart`, heartsN: n => `${n} ${n === 1 ? "heart" : "hearts"}`,
     calcTitle: ev => `Base + decor + head + friendship + mushroom${ev ? " + event" : ""}`,
+    imprint: "Legal notice", privacy: "Privacy", close: "Close",
     tabKeime: "Seedlings",
     seedsIntro: d => `Which seedlings are worth planting now? Seedling scan of ${d}, compared with the collection and the unlocked rare decor.`,
     seedGroups: { hatch: "Plant now", maybe: "Maybe", wait: "Keep for later", planted: "Already growing" },
@@ -558,6 +576,36 @@ function texts() {
     url.searchParams.set("lang", b.dataset.lang);
     location.replace(url);
   });
+}
+
+/* ---- legal notice / privacy policy: the owner's own texts from legal/ (see legal/*.example*.html) ---- */
+const LEGAL = DATA.legal || {};
+const LEGAL_HASH = { imprint: ["impressum", "imprint"], privacy: ["datenschutz", "privacy"] };
+function openLegal(name) {
+  const texts = LEGAL[name]; if (!texts) return;
+  $("legal-body").innerHTML = texts[L] || texts.de || texts.en;  // the owner's own HTML
+  if (!$("legal").open) $("legal").showModal();
+}
+function legalPages() {
+  const names = Object.keys(LEGAL).filter(n => LEGAL_HASH[n]);
+  if (!names.length) return;
+  $("foot").hidden = false;
+  $("foot").innerHTML = names.map(n => `<a href="#${LEGAL_HASH[n][L === "de" ? 0 : 1]}" data-legal="${n}">${T[n]}</a>`).join("");
+  $("foot").addEventListener("click", e => {
+    const a = e.target.closest("[data-legal]"); if (!a) return;
+    e.preventDefault();
+    history.replaceState(null, "", a.getAttribute("href"));
+    openLegal(a.dataset.legal);
+  });
+  $("legal").addEventListener("click", e => { if (e.target === $("legal")) $("legal").close(); });  // backdrop
+  $("legal").addEventListener("close", () => history.replaceState(null, "", location.pathname + location.search));
+  const fromHash = () => {
+    const h = location.hash.slice(1).toLowerCase();
+    const name = names.find(n => LEGAL_HASH[n].includes(h));
+    if (name) openLegal(name);
+  };
+  window.addEventListener("hashchange", fromHash);
+  fromHash();  // links like …/#impressum open the text directly
 }
 
 /* ---- masthead ---- */
@@ -806,6 +854,7 @@ function render() {
 }
 
 texts();
+legalPages();
 masthead();
 controls();
 matrix();

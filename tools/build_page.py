@@ -83,6 +83,23 @@ def set_order():
     return order
 
 
+def legal():
+    """Your own legal notice / privacy policy (legal/imprint.html, legal/privacy.html; examples in
+    legal/*.example*.html). A file named <name>.en.html or <name>.de.html serves that page language,
+    <name>.html every language. None of them = no footer on the page."""
+    out = {}
+    for name in ("imprint", "privacy"):
+        texts = {}
+        for lang in ("de", "en"):
+            for path in (ROOT / "legal" / f"{name}.{lang}.html", ROOT / "legal" / f"{name}.html"):
+                if path.exists():
+                    texts[lang] = path.read_text(encoding="utf-8")
+                    break
+        if texts:
+            out[name] = texts
+    return out
+
+
 def seeds():
     """Seedlings of the latest seedling scan (captures/seeds/<run>/parsed.tsv). `options` are the
     sets a seedling can grow into: one, or all motifs of a decor whose set the list left open."""
@@ -172,7 +189,8 @@ def main():
     cfg = load_config()
     config = {"rareUnlocked": cfg.get("rare_unlocked", []), "language": cfg.get("language")}
     payload = json.dumps({"pikmin": rows, "sprite": meta, "order": order, "config": config,
-                          "names": {"en": english_names()}, "seeds": seeds()}, ensure_ascii=False)
+                          "names": {"en": english_names()}, "seeds": seeds(), "legal": legal()},
+                         ensure_ascii=False)
     template = (RES / "web/template.html").read_text(encoding="utf-8")
     html = template.replace("/*DATA*/null", payload.replace("</", "<\\/"))
     (ROOT / "web/index.html").write_text(html, encoding="utf-8")

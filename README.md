@@ -62,6 +62,7 @@ Pikmin in a group are a separate list – append them with option 4.
 |---|---|
 | `config.local.json` | collection settings, see `config.example.json`: `rare_unlocked` lists the rare decor sets unlocked in your in-game collection (German names, e.g. `"Eichelhut (Selten)"` for the rare Acorn); `language` (`"de"` or `"en"`, optional) is the language of the script messages and the default language of the page – without it the scripts follow the system language and the page the visitor's browser (`PIKMIN_LANG=en` overrides it for a single run) |
 | `publish.local.json` | server URL and upload token, see `publish.example.json` |
+| `legal/imprint.html`, `legal/privacy.html` | optional legal notice and privacy policy: built into the page and linked in its footer. Start from the examples `legal/*.example*.html` (German and English; `<name>.en.html` is shown on the English page, `<name>.html` in every language). They are examples, not legal advice – check yourself what your page needs |
 
 Everything you collect – `captures/`, `data/`, the built page – stays local and is ignored by git,
 because it contains where your Pikmin were found. The Windows app keeps it next to the exe; to

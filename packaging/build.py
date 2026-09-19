@@ -28,6 +28,8 @@ Needed on the PC:
 Settings (copy the example and edit it):
 - config.local.json   <- config.example.json   (rare decor you unlocked, language)
 - publish.local.json  <- publish.example.json  (your server, only for publishing)
+- legal/imprint.html, legal/privacy.html  <- legal/*.example*.html  (optional: legal notice and
+  privacy policy, shown in the footer of the page - examples only, not legal advice)
 
 Windows may warn on the first start because the app is not signed:
 "More info" -> "Run anyway".
@@ -43,6 +45,9 @@ def main():
                     str(ROOT / "packaging" / "PikminHerbarium.spec")], check=True)
     for name in ("config.example.json", "publish.example.json", "LICENSE"):
         shutil.copy(ROOT / name, APP / name)
+    (APP / "legal").mkdir(exist_ok=True)
+    for example in (ROOT / "legal").glob("*.example*.html"):
+        shutil.copy(example, APP / "legal" / example.name)
     (APP / "README.txt").write_text(QUICKSTART.format(version=version), encoding="utf-8")
     archive = shutil.make_archive(str(DIST / f"PikminHerbarium-{version}"), "zip", DIST, APP.name)
     print(f"-> {archive}")
