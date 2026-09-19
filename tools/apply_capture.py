@@ -80,9 +80,14 @@ def main():
     gone = [o for j, o in enumerate(old_rows) if j not in matched_old]
     if gone and args.remove_missing:
         old_rows = [o for j, o in enumerate(old_rows) if j in matched_old]
-    added = []
+    added, skipped = [], []
     for i, n in enumerate(new_rows):
         if i in match:
+            continue
+        if not n["date"] or not n["color"]:
+            # unreadable card: without colour and date it cannot be matched and would come back
+            # as a duplicate - re-take it (menu: single card) instead
+            skipped.append(n)
             continue
         origin = clean_origin(n["origin"])
         row = {"frame": f"{next_frame:03d}", "name": n["name"] + (" aus " + origin if origin else ""),
@@ -130,6 +135,9 @@ def main():
 
     print(tr(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten",
              f"{len(match)} updated, {len(added)} new, {len(source)} portraits recut"))
+    for n in skipped:
+        print(tr(f"  übersprungen, Datum/Farbe nicht lesbar: #{n['n']} {show_name(n['name'])} - Einzelkarte neu aufnehmen",
+                 f"  skipped, date/type unreadable: #{n['n']} {show_name(n['name'])} - re-take the single card"))
     for r in added:
         print(f"  [{r['frame']}] {show_name(r['name'])} · {show_spot(r['spot'])} · {show_loc(r['location'])} · {r['date']}")
     if gone:

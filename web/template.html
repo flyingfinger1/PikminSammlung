@@ -570,7 +570,8 @@ const LOCALE = L === "de" ? "de-DE" : "en-US";  // US dates like the game: "Sep 
 const fmt = n => n.toLocaleString(LOCALE);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const dateFmt = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short", year: "numeric" });
-const showDate = d => dateFmt.format(new Date(d + "T12:00:00"));
+// a date the scan could not read must not break the page
+const showDate = d => { const t = new Date(d + "T12:00:00"); return d && !isNaN(t) ? dateFmt.format(t) : "?"; };
 
 const state = { q: "", colors: new Set(), decor: "", fav: false, sort: "rank", view: "grid" };
 

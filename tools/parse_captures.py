@@ -168,11 +168,16 @@ def month_from_weekday(wd, day, year):
     return hits[0].isoformat() if len(hits) == 1 else None
 
 
+DAY_LOOKALIKES = str.maketrans("lI|O", "1110")
+
+
 def parse_date(text, L=LANGS["de"]):
     if L["code"] == "en":
         return en_date(text)
     t = re.sub(r"(\d)\s+(?=[\d.])", r"\1", text)   # "1 1 . Sep" -> "11. Sep"
     t = re.sub(r"\s+\.", ".", t)
+    # the day read as letters: "Di, l. sep" = "Di, 1. Sep", "O7." = "07."
+    t = re.sub(r"(?<=[,\s])([\dlI|O]{1,2})(?=\.)", lambda m: m.group(1).translate(DAY_LOOKALIKES), t)
     dm = DATE.search(t)
     if not dm:
         nm = NO_MONTH.search(t)

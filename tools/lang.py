@@ -145,6 +145,8 @@ def en_date(text):
     """"Discovered on: Tue, Sep 8, 2026" -> "2026-09-08". The floating egg button can cover the
     year; then the latest year up to today in which the date falls on that weekday is taken."""
     t = re.sub(r"(\d)\s+(?=\d)", r"\1", text)
+    # the day read as letters: "Sep l, 2026" = "Sep 1, 2026"
+    t = re.sub(r"(?<=[A-Za-z]{3} )([\dlI|O]{1,2})(?=,|\s|$)", lambda m: m.group(1).translate(str.maketrans("lI|O", "1110")), t)
     m = EN_DATE.search(t)
     if not m:
         return None
