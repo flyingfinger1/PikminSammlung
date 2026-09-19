@@ -15,6 +15,10 @@ A personal catalogue of all your **Pikmin Bloom** Pikmin, built from your own ph
   others wait: before the unlock plucking them earns nothing extra, and as a seedling a Pikmin
   cannot reach 4 hearts by accident and use up its decor.
 
+Every view has its own address to share: `#deko-matrix`, `#pilzkampf`, `#keime`, a squad such as
+`#pilzkampf/feuer/blume`, or a single Pikmin – the link icon on each card copies `#pikmin/<number>`.
+The browser's Back button steps through tabs, matrix clicks and squads.
+
 There is no official way to export your Pikmin, so the collection is read from the screen: a
 script pages through the Pikmin detail view over **ADB**, reads each card with the built-in
 **Windows OCR** and turns the result into a static page. A small server hosts that page; new

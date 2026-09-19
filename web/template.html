@@ -147,7 +147,19 @@ h1 {
 }
 .rank { position: absolute; left: 8px; top: 7px; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
   background: var(--surface); border-radius: 6px; padding: 1px 6px; }
-.star { position: absolute; right: 8px; top: 6px; color: var(--gold); font-size: 17px; line-height: 1; }
+.star { position: absolute; right: 34px; top: 6px; color: var(--gold); font-size: 17px; line-height: 1; }
+.link {
+  position: absolute; right: 6px; top: 5px; width: 24px; height: 24px; display: grid; place-items: center;
+  border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); opacity: .45; cursor: pointer; padding: 0;
+}
+.card:hover .link, .link:focus-visible { opacity: 1; }
+.link:hover { color: var(--accent); }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 20; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  background: var(--ink); color: var(--ground); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  max-width: calc(100vw - 32px); overflow-wrap: anywhere; transition: opacity .2s, transform .2s;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
 .body { padding: 11px 13px 13px; display: grid; gap: 8px; align-content: start; }
 .name { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.15; margin: 0; text-wrap: balance; }
 .meta { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -368,6 +380,7 @@ b.ev.secondary { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent)
   </main>
   <footer class="foot" id="foot" hidden></footer>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <dialog class="legal" id="legal">
   <form method="dialog"><button class="legal-close" data-t-aria="close">×</button></form>
   <div class="legal-body" id="legal-body"></div>
@@ -433,6 +446,7 @@ const T = {
     goldHearts: n => `${n}× Goldherz`, heartsN: n => `${n} ${n === 1 ? "Herz" : "Herzen"}`,
     calcTitle: ev => `Grundwert + Deko + Kopf + Freundschaft + Pilz${ev ? " + Event" : ""}`,
     imprint: "Impressum", privacy: "Datenschutz", close: "Schließen",
+    copyLink: "Link zu diesem Pikmin kopieren", linkCopied: "Link kopiert", pickLabel: "Verlinktes Pikmin",
     tabKeime: "Keime",
     seedsIntro: d => `Welche Keime lohnen sich jetzt? Keim-Scan vom ${d}, verglichen mit der Sammlung und der freigeschalteten seltenen Deko.`,
     seedGroups: { hatch: "Ausbrüten", maybe: "Vielleicht", wait: "Liegen lassen", planted: "Wächst schon" },
@@ -498,6 +512,7 @@ const T = {
     goldHearts: n => `${n}× gold heart`, heartsN: n => `${n} ${n === 1 ? "heart" : "hearts"}`,
     calcTitle: ev => `Base + decor + head + friendship + mushroom${ev ? " + event" : ""}`,
     imprint: "Legal notice", privacy: "Privacy", close: "Close",
+    copyLink: "Copy link to this Pikmin", linkCopied: "Link copied", pickLabel: "Linked Pikmin",
     tabKeime: "Seedlings",
     seedsIntro: d => `Which seedlings are worth planting now? Seedling scan of ${d}, compared with the collection and the unlocked rare decor.`,
     seedGroups: { hatch: "Plant now", maybe: "Maybe", wait: "Keep for later", planted: "Already growing" },
@@ -562,23 +577,51 @@ const state = { q: "", colors: new Set(), decor: "", fav: false, sort: "rank", v
 let navReady = false, quiet = 0;  // quiet > 0: navigating or restoring, no intermediate entries
 function navState() {
   return { view: state.view, q: state.q, colors: [...state.colors], decor: state.decor, fav: state.fav,
-    sort: state.sort, cand: state.cand || null, points: !!state.points, squad: lastSquad, scroll: window.scrollY };
+    sort: state.sort, cand: state.cand || null, points: !!state.points, pick: state.pick || null,
+    squad: lastSquad, scroll: window.scrollY };
+}
+// deep links: the address names the view, a single Pikmin or a squad, so it can be shared
+// (language-neutral ids; the language of the page is not part of a link)
+const VIEW_HASH = { matrix: "deko-matrix", pilze: "pilzkampf", keime: "keime" };
+const MUSHROOM_IDS = ["rot", "gelb", "blau", "lila", "weiss", "rosa", "grau", "eisblau", "feuer", "strom",
+  "wasser", "gift", "kristall", "event"];
+const HEAD_IDS = ["nichts", "blatt", "blume", "saison", "monat"];
+function urlOf(s) {
+  const hash = s.legal ? LEGAL_HASH[s.legal][L === "de" ? 0 : 1]
+    : s.view === "grid" && s.pick ? `pikmin/${s.pick}`
+    : s.view === "pilze" && s.squad ? `pilzkampf/${MUSHROOM_IDS[s.squad[0]]}/${HEAD_IDS[s.squad[1]]}`
+    : VIEW_HASH[s.view] || "";
+  return location.pathname + location.search + (hash ? "#" + hash : "");
+}
+function navFromHash() {
+  const [first, a, b] = decodeURIComponent(location.hash.slice(1)).toLowerCase().split("/");
+  const legal = Object.keys(LEGAL).find(n => LEGAL_HASH[n] && LEGAL_HASH[n].includes(first));
+  if (legal) return { view: "grid", legal };
+  if (first === "pikmin" && P.some(p => p.frame === +a)) return { view: "grid", pick: +a };
+  if (first === "pilzkampf") {
+    const mi = MUSHROOM_IDS.indexOf(a), hi = HEAD_IDS.indexOf(b);
+    return { view: "pilze", squad: mi >= 0 && hi >= 0 ? [mi, hi] : null };
+  }
+  const view = Object.keys(VIEW_HASH).find(v => VIEW_HASH[v] === first);
+  return { view: view === "keime" && !SEEDS.length ? "grid" : view || "grid" };
 }
 function remember() {  // the current entry follows filters and scroll
-  if (navReady && !quiet) history.replaceState({ ...(history.state || {}), ...navState() }, "", location.href);
+  if (!navReady || quiet) return;
+  const s = { ...(history.state || {}), ...navState() };
+  history.replaceState(s, "", urlOf(s));
 }
 function go(change) {  // a navigation: keep the current state, change, then a new entry
   remember();
   quiet++;
   try { change(); } finally { quiet--; }
-  history.pushState(navState(), "", location.pathname + location.search);
+  history.pushState(navState(), "", urlOf(navState()));
 }
 function applyNav(s) {
   s = s || {};
   quiet++;
   try {
     Object.assign(state, { q: s.q || "", decor: s.decor || "", fav: !!s.fav, sort: s.sort || "rank",
-      cand: s.cand || null, points: !!s.points });
+      cand: s.cand || null, points: !!s.points, pick: s.pick || null });
     state.colors = new Set(s.colors || []);
     $("q").value = state.q; $("decor").value = state.decor; $("sort").value = state.sort;
     $("fav").setAttribute("aria-pressed", state.fav); syncChips();
@@ -609,14 +652,13 @@ function texts() {
 /* ---- legal notice / privacy policy: the owner's own texts from legal/ (see legal/*.example*.html) ---- */
 const LEGAL = DATA.legal || {};
 const LEGAL_HASH = { imprint: ["impressum", "imprint"], privacy: ["datenschutz", "privacy"] };
-let legalFromHash = () => {};
 let closingByHistory = false;
 function openLegal(name, push = true) {
   const texts = LEGAL[name]; if (!texts) return;
   $("legal-body").innerHTML = texts[L] || texts.de || texts.en;  // the owner's own HTML
   if (push) {  // an entry of its own: Back closes the text again
     remember();
-    history.pushState({ ...navState(), legal: name, pushed: true }, "", "#" + LEGAL_HASH[name][L === "de" ? 0 : 1]);
+    history.pushState({ ...navState(), legal: name, pushed: true }, "", urlOf({ ...navState(), legal: name }));
   }
   if (!$("legal").open) $("legal").showModal();
 }
@@ -637,17 +679,8 @@ function legalPages() {
   $("legal").addEventListener("close", () => {
     if (closingByHistory) { closingByHistory = false; return; }
     if (history.state && history.state.pushed) history.back();  // closed by hand: leave its entry
-    else history.replaceState(navState(), "", location.pathname + location.search);  // came in by a link
+    else history.replaceState(navState(), "", urlOf(navState()));  // came in by a link
   });
-  legalFromHash = () => {  // links like …/#impressum open the text directly
-    const h = location.hash.slice(1).toLowerCase();
-    const name = names.find(n => LEGAL_HASH[n].includes(h));
-    if (name) {
-      history.replaceState({ ...navState(), legal: name }, "", location.href);
-      openLegal(name, false);
-    }
-  };
-  window.addEventListener("hashchange", () => legalFromHash());
 }
 
 /* ---- masthead ---- */
@@ -700,7 +733,7 @@ function syncChips() {
   document.querySelectorAll("#colors .chip").forEach(b => b.setAttribute("aria-pressed", state.colors.has(b.dataset.color)));
 }
 function resetFilters() {
-  Object.assign(state, { q: "", decor: "", fav: false, cand: null, points: false });
+  Object.assign(state, { q: "", decor: "", fav: false, cand: null, points: false, pick: null });
   state.colors.clear();
   $("q").value = ""; $("decor").value = ""; $("fav").setAttribute("aria-pressed", "false");
   syncChips(); render();
@@ -749,6 +782,7 @@ function card(p) {
       <i style="${sprite(p)}"></i>
       <span class="rank">#${p.rank}</span>
       ${p.fav ? `<span class="star" title="${T.fav}">★</span>` : ""}
+      <button class="link" type="button" data-frame="${p.frame}" title="${T.copyLink}" aria-label="${T.copyLink}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg></button>
     </div>
     <div class="body">
       <h2 class="name">${esc(pname(p))}</h2>
@@ -763,7 +797,7 @@ const haystack = p => [p.name, pname(p), p.origin, p.location, tLoc(p.location),
   p.spot, tSpot(p.spot), p.color, tColor(p.color)].join(" ").toLowerCase();
 function filtered() {
   const q = state.q;
-  let list = state.points ? pointCandidates()
+  let list = state.pick ? P.filter(p => p.frame === state.pick) : state.points ? pointCandidates()
     : state.cand ? candidates(state.cand.decor, state.cand.color) : P.filter(p =>
     (!state.colors.size || state.colors.has(p.color)) &&
     (!state.fav || p.fav) &&
@@ -880,8 +914,8 @@ function matrix() {
 
 function render() {
   const list = filtered();
-  const active = state.q || state.colors.size || state.decor || state.fav || state.cand || state.points;
-  const label = state.points
+  const active = state.q || state.colors.size || state.decor || state.fav || state.cand || state.points || state.pick;
+  const label = state.pick ? T.pickLabel : state.points
     ? T.pointsLabel(list.length, esc(rareSpotNames()))
     : state.cand
     ? T.candLabel(list.length, esc(tDecor(state.cand.decor)), tColor(state.cand.color))
@@ -1113,13 +1147,40 @@ render();
    the current entry, so Back does not step through every keystroke. ---- */
 history.scrollRestoration = "manual";
 navReady = true;
-if (history.state && history.state.view) applyNav(history.state);  // a reload stays where it was
-else history.replaceState(navState(), "", location.href);
-legalFromHash();
+const start = history.state && history.state.view ? history.state : navFromHash();  // a reload stays where it was
+applyNav(start);
+history.replaceState({ ...navState(), legal: start.legal }, "", urlOf({ ...navState(), legal: start.legal }));
+if (start.legal) openLegal(start.legal, false);
 let scrollTimer;
 window.addEventListener("scroll", () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(remember, 150); }, { passive: true });
 window.addEventListener("popstate", e => {
-  applyNav(e.state);
-  if (e.state && e.state.legal) openLegal(e.state.legal, false); else closeLegal();
+  const s = e.state || navFromHash();  // no state: the address was edited by hand
+  applyNav(s);
+  if (!e.state) history.replaceState({ ...navState(), legal: s.legal }, "", urlOf({ ...navState(), legal: s.legal }));
+  if (s.legal) openLegal(s.legal, false); else closeLegal();
+});
+
+let toastTimer;
+function toast(text) {
+  $("toast").textContent = text;
+  $("toast").classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("on"), 2500);
+}
+async function copyLink(url) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    // no clipboard API (e.g. plain http): the old way, and if that fails too, show the link
+    const t = document.createElement("textarea");
+    t.value = url; t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select();
+    try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    t.remove();
+  }
+  toast(ok ? T.linkCopied : url);
+}
+$("grid").addEventListener("click", e => {
+  const b = e.target.closest("button.link"); if (!b) return;
+  copyLink(location.origin + location.pathname + "#pikmin/" + b.dataset.frame);
 });
 </script>
