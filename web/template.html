@@ -559,6 +559,35 @@ const showDate = d => dateFmt.format(new Date(d + "T12:00:00"));
 
 const state = { q: "", colors: new Set(), decor: "", fav: false, sort: "rank", view: "grid" };
 
+let navReady = false, quiet = 0;  // quiet > 0: navigating or restoring, no intermediate entries
+function navState() {
+  return { view: state.view, q: state.q, colors: [...state.colors], decor: state.decor, fav: state.fav,
+    sort: state.sort, cand: state.cand || null, points: !!state.points, squad: lastSquad, scroll: window.scrollY };
+}
+function remember() {  // the current entry follows filters and scroll
+  if (navReady && !quiet) history.replaceState({ ...(history.state || {}), ...navState() }, "", location.href);
+}
+function go(change) {  // a navigation: keep the current state, change, then a new entry
+  remember();
+  quiet++;
+  try { change(); } finally { quiet--; }
+  history.pushState(navState(), "", location.pathname + location.search);
+}
+function applyNav(s) {
+  s = s || {};
+  quiet++;
+  try {
+    Object.assign(state, { q: s.q || "", decor: s.decor || "", fav: !!s.fav, sort: s.sort || "rank",
+      cand: s.cand || null, points: !!s.points });
+    state.colors = new Set(s.colors || []);
+    $("q").value = state.q; $("decor").value = state.decor; $("sort").value = state.sort;
+    $("fav").setAttribute("aria-pressed", state.fav); syncChips();
+    setView(s.view || "grid");
+    if (s.squad) showSquad(...s.squad, false); else clearSquad();
+  } finally { quiet--; }
+  requestAnimationFrame(() => window.scrollTo(0, s.scroll || 0));
+}
+
 /* ---- static texts and language switch ---- */
 function texts() {
   document.documentElement.lang = L;
@@ -580,10 +609,19 @@ function texts() {
 /* ---- legal notice / privacy policy: the owner's own texts from legal/ (see legal/*.example*.html) ---- */
 const LEGAL = DATA.legal || {};
 const LEGAL_HASH = { imprint: ["impressum", "imprint"], privacy: ["datenschutz", "privacy"] };
-function openLegal(name) {
+let legalFromHash = () => {};
+let closingByHistory = false;
+function openLegal(name, push = true) {
   const texts = LEGAL[name]; if (!texts) return;
   $("legal-body").innerHTML = texts[L] || texts.de || texts.en;  // the owner's own HTML
+  if (push) {  // an entry of its own: Back closes the text again
+    remember();
+    history.pushState({ ...navState(), legal: name, pushed: true }, "", "#" + LEGAL_HASH[name][L === "de" ? 0 : 1]);
+  }
   if (!$("legal").open) $("legal").showModal();
+}
+function closeLegal() {
+  if ($("legal").open) { closingByHistory = true; $("legal").close(); }
 }
 function legalPages() {
   const names = Object.keys(LEGAL).filter(n => LEGAL_HASH[n]);
@@ -593,18 +631,23 @@ function legalPages() {
   $("foot").addEventListener("click", e => {
     const a = e.target.closest("[data-legal]"); if (!a) return;
     e.preventDefault();
-    history.replaceState(null, "", a.getAttribute("href"));
     openLegal(a.dataset.legal);
   });
   $("legal").addEventListener("click", e => { if (e.target === $("legal")) $("legal").close(); });  // backdrop
-  $("legal").addEventListener("close", () => history.replaceState(null, "", location.pathname + location.search));
-  const fromHash = () => {
+  $("legal").addEventListener("close", () => {
+    if (closingByHistory) { closingByHistory = false; return; }
+    if (history.state && history.state.pushed) history.back();  // closed by hand: leave its entry
+    else history.replaceState(navState(), "", location.pathname + location.search);  // came in by a link
+  });
+  legalFromHash = () => {  // links like …/#impressum open the text directly
     const h = location.hash.slice(1).toLowerCase();
     const name = names.find(n => LEGAL_HASH[n].includes(h));
-    if (name) openLegal(name);
+    if (name) {
+      history.replaceState({ ...navState(), legal: name }, "", location.href);
+      openLegal(name, false);
+    }
   };
-  window.addEventListener("hashchange", fromHash);
-  fromHash();  // links like …/#impressum open the text directly
+  window.addEventListener("hashchange", () => legalFromHash());
 }
 
 /* ---- masthead ---- */
@@ -649,10 +692,8 @@ function controls() {
   $("decor").addEventListener("change", e => { state.decor = e.target.value; render(); });
   $("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
   $("fav").addEventListener("click", () => { state.fav = !state.fav; $("fav").setAttribute("aria-pressed", state.fav); render(); });
-  $("tab-grid").addEventListener("click", () => setView("grid"));
-  $("tab-matrix").addEventListener("click", () => setView("matrix"));
-  $("tab-pilze").addEventListener("click", () => setView("pilze"));
-  $("tab-keime").addEventListener("click", () => setView("keime"));
+  for (const v of ["grid", "matrix", "pilze", "keime"])
+    $("tab-" + v).addEventListener("click", () => { if (state.view !== v) go(() => setView(v)); });
   $("shown").addEventListener("click", e => { if (e.target.classList.contains("reset")) resetFilters(); });
 }
 function syncChips() {
@@ -846,6 +887,7 @@ function render() {
     ? T.candLabel(list.length, esc(tDecor(state.cand.decor)), tColor(state.cand.color))
     : T.ofTotal(list.length, P.length);
   $("shown").innerHTML = label + (active ? ` <button class="reset">${T.reset}</button>` : "");
+  remember();
   if (state.view === "grid") {
     hid = 0;
     $("grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">${state.points ? T.emptyPoints : T.empty}</p>`;
@@ -945,6 +987,11 @@ function pilze() {
     }).join("") + `</tr>`).join("");
   $("pilze").innerHTML = head + `<tbody>${body}</tbody>`;
 }
+function clearSquad() {
+  lastSquad = null;
+  $("squad").innerHTML = "";
+  document.querySelectorAll("#pilze button.pow").forEach(x => x.setAttribute("aria-pressed", "false"));
+}
 function showSquad(mi, hi, scroll = true) {
   lastSquad = [mi, hi];
   document.querySelectorAll("#pilze button.pow").forEach(x =>
@@ -964,7 +1011,7 @@ function showSquad(mi, hi, scroll = true) {
 }
 $("pilze").addEventListener("click", e => {
   const b = e.target.closest("button.pow"); if (!b) return;
-  showSquad(+b.dataset.m, +b.dataset.h);
+  go(() => showSquad(+b.dataset.m, +b.dataset.h));
 });
 renderEvent();
 pilze();
@@ -1038,22 +1085,41 @@ seedsView();
 
 $("matrix-sum").addEventListener("click", e => {
   if (!e.target.closest("#points-btn")) return;
-  resetFilters();
-  state.points = true;
-  setView("grid");
-  window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+  go(() => {
+    resetFilters();
+    state.points = true;
+    setView("grid");
+    window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+  });
 });
 $("matrix").addEventListener("click", e => {
   const b = e.target.closest("button.has, button.cand"); if (!b) return;
-  resetFilters();
-  if (b.classList.contains("cand")) {
-    state.cand = { decor: b.dataset.decor, color: b.dataset.color };
-  } else {
-    state.decor = b.dataset.decor; $("decor").value = b.dataset.decor;
-    state.colors = new Set([b.dataset.color]); syncChips();
-  }
-  setView("grid");
-  window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+  go(() => {
+    resetFilters();
+    if (b.classList.contains("cand")) {
+      state.cand = { decor: b.dataset.decor, color: b.dataset.color };
+    } else {
+      state.decor = b.dataset.decor; $("decor").value = b.dataset.decor;
+      state.colors = new Set([b.dataset.color]); syncChips();
+    }
+    setView("grid");
+    window.scrollTo({ top: $("view-grid").offsetTop - 80, behavior: "smooth" });
+  });
 });
 render();
+
+/* ---- browser history: tabs, matrix clicks, squads and the legal texts are entries of their own;
+   Back restores view, filters and scroll position. Typing and single filter clicks only update
+   the current entry, so Back does not step through every keystroke. ---- */
+history.scrollRestoration = "manual";
+navReady = true;
+if (history.state && history.state.view) applyNav(history.state);  // a reload stays where it was
+else history.replaceState(navState(), "", location.href);
+legalFromHash();
+let scrollTimer;
+window.addEventListener("scroll", () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(remember, 150); }, { passive: true });
+window.addEventListener("popstate", e => {
+  applyNav(e.state);
+  if (e.state && e.state.legal) openLegal(e.state.legal, false); else closeLegal();
+});
 </script>
