@@ -276,6 +276,11 @@ def step_single(run):
                  f" · {show_loc(target['location'])} · {target['date']}",
                  f"\nOpen in the game: {show_name(target['name'])} · {show_spot(target['spot'])}"
                  f" · {show_loc(target['location'])} · {target['date']}"))
+        # the card number is its place in the list: the same order the scan went through
+        print(tr(f"  In der nach Deko sortierten Liste ist das Pikmin Nummer {target['card']}"
+                 " (von oben gezählt, ohne die Gruppe).",
+                 f"  In the list sorted by decor it is Pikmin number {target['card']}"
+                 " (counted from the top, without the squad)."))
     else:
         print(tr("\nÖffne das Pikmin, dessen Karte oder Porträt gestört war (Popup schließen).",
                  "\nOpen the Pikmin whose card or portrait was covered (close the popup)."))
