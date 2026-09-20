@@ -416,6 +416,7 @@ const T = {
     complete: "Sammlung vollständig erfasst.",
     allPikmin: "Alle Pikmin", onlyDecor: "Nur Deko-Pikmin", noDecor: "Ohne Deko",
     heartsGold: "4 Herzen, Gold-Fortschritt", heartsOf: h => `${h} von 4 Herzen`,
+    heartsGoldOf: g => `${fmt(g)} von 4 goldenen Herzen`,
     plain: "ohne Deko", fav: "Favorit", steps: "Schritte", found: d => `entdeckt ${d}`,
     mDecor: "Deko", mCand: "Kandidaten", mCandTitle: "Fehlende Farben, für die schon ein passendes Pikmin da ist",
     naTitle: "Gibt es im Spiel nicht", allMotifs: "Alle Motive haben diese Farbe",
@@ -481,6 +482,7 @@ const T = {
     complete: "Collection fully recorded.",
     allPikmin: "All Pikmin", onlyDecor: "Decor Pikmin only", noDecor: "Without decor",
     heartsGold: "4 hearts, gold in progress", heartsOf: h => `${h} of 4 hearts`,
+    heartsGoldOf: g => `${fmt(g)} of 4 gold hearts`,
     plain: "no decor", fav: "Favorite", steps: "steps", found: d => `discovered ${d}`,
     mDecor: "Decor", mCand: "Candidates", mCandTitle: "Missing types for which a fitting Pikmin already exists",
     naTitle: "Does not exist in the game", allMotifs: "All motifs have this type",
@@ -757,15 +759,21 @@ function setView(v) {
 const HEART = "M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.6 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z";
 let hid = 0;
 function hearts(p) {
+  // past four hearts the game fills the same four hearts again in gold, one by one and only
+  // partly for the one in progress - so gold lies on top of the red ones
   let out = "";
+  const gold = p.goldHearts || 0;
+  const part = (v, i) => Math.max(0, Math.min(1, v - i));
   for (let i = 0; i < 4; i++) {
-    const fill = Math.max(0, Math.min(1, p.hearts - i));
-    const col = p.gold && i === 0 ? "var(--gold)" : "var(--bloom)";
-    const id = "h" + (hid++);
-    out += `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="${id}"><rect x="0" y="0" width="${24 * fill}" height="24"/></clipPath></defs>` +
-      `<path d="${HEART}" fill="var(--heart-empty)"/><path d="${HEART}" fill="${col}" clip-path="url(#${id})"/></svg>`;
+    const id = "h" + (hid++), gid = "g" + (hid++);
+    out += `<svg viewBox="0 0 24 24" aria-hidden="true"><defs>` +
+      `<clipPath id="${id}"><rect width="${24 * part(p.hearts, i)}" height="24"/></clipPath>` +
+      `<clipPath id="${gid}"><rect width="${24 * part(gold, i)}" height="24"/></clipPath></defs>` +
+      `<path d="${HEART}" fill="var(--heart-empty)"/>` +
+      `<path d="${HEART}" fill="var(--bloom)" clip-path="url(#${id})"/>` +
+      `<path d="${HEART}" fill="var(--gold)" clip-path="url(#${gid})"/></svg>`;
   }
-  const label = p.gold ? T.heartsGold : T.heartsOf(p.hearts);
+  const label = gold ? T.heartsGoldOf(gold) : p.gold ? T.heartsGold : T.heartsOf(p.hearts);
   return `<span class="hearts" title="${label}" aria-label="${label}">${out}</span>`;
 }
 function sprite(p) {
@@ -955,7 +963,8 @@ const MATCH = {
   Eis:    [0, 3, 3, 3, 0, 3, 3, 12, X, X, X, X, X, 0]
 };
 const SQUAD = 40;
-const friendPoints = p => p.goldHearts > 0 ? [0, 8, 12, 16, 20][Math.min(4, p.goldHearts)] : Math.floor(p.hearts);
+// only a completed gold heart counts for the attack power
+const friendPoints = p => p.goldHearts >= 1 ? [0, 8, 12, 16, 20][Math.min(4, Math.floor(p.goldHearts))] : Math.floor(p.hearts);
 // Decor Pikmin events: primary decor +300 / secondary +100 on the event mushroom, +15 on all others.
 // Which decor is primary/secondary changes per event -> chosen on the page, kept in this browser.
 const EVENT_KEY = "pikmin-event-decor";
@@ -1035,7 +1044,7 @@ function showSquad(mi, hi, scroll = true) {
   const [hn, hv] = HEADS[hi];
   const s = squad(mi, hv);
   const sum = s.reduce((a, x) => a + x.v, 0);
-  const heartsText = p => p.goldHearts > 0 ? T.goldHearts(p.goldHearts) : T.heartsN(Math.floor(p.hearts));
+  const heartsText = p => p.goldHearts >= 1 ? T.goldHearts(Math.floor(p.goldHearts)) : T.heartsN(Math.floor(p.hearts));
   $("squad").innerHTML = `<h3>${name} · ${hn}: ${fmt(sum)} <small>${T.nPikmin(s.length)}</small></h3>` +
     `<ol class="squad">` + s.map(({ p, v }) => `<li>
       <span class="mini" style="--c:${cvar[p.color]}"><i style="${sprite(p)}"></i></span>

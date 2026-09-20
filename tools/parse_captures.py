@@ -107,27 +107,35 @@ def heart_icons(band, x0):
 def read_hearts(img, steps_y):
     """Friendship from the heart icons. A heart is complete only when it shows the white
     highlight at its top left (red or gold); the heart in progress has none and counts with
-    its fill. Returns (hearts, gold_any, completed gold hearts)."""
+    its fill. Beyond four hearts the gold fills the same four hearts again, one by one, so the
+    gold count can be fractional. Returns (hearts, gold_any, gold hearts)."""
     a = np.asarray(img)
     y = steps_y + HEART_DY
     band = a[y - 12:y + 12]
     red_full = gold_full = 0
-    partial, gold_any = 0.0, False
+    partial, gold_part, gold_any = 0.0, 0.0, False
     for s, e in heart_icons(band, HEART_SCAN[0]):
         red, gold, grey = classify(band[:, s:e])
         filled = (red | gold).any(axis=0)
         gold_any |= bool(gold.sum() > 20)
         box = a[y - 10:y - 2, s + 8:s + 18].astype(int)
         highlight = ((box[..., 0] > 235) & (box[..., 1] > 235) & (box[..., 2] > 235)).sum() >= 6
-        if highlight and gold.sum() > red.sum():
+        # a red heart has a few gold-looking pixels in its gradient, so only a real amount of
+        # gold counts; while the gold moves across a heart it covers the white highlight, which
+        # therefore says nothing about that one
+        gold_here = gold.sum() > 20
+        gold_cols = (gold.sum(axis=0) >= 3).sum() if gold_here else 0
+        if gold_here and highlight and gold.sum() > red.sum():
             gold_full += 1
+        elif gold_cols >= 2:  # the gold heart being filled, over the red one underneath
+            gold_part = max(gold_part, min(0.95, round(gold_cols / (e - s) * 20) / 20))
         elif highlight:
             red_full += 1
-        elif not gold.any():
+        else:
             partial = max(partial, filled.sum() / (e - s))  # the one red heart being filled
     # a heart without highlight is not complete: its fill to the nearest quarter, at most 3/4
     hearts = 4.0 if gold_any else min(4.0, red_full + min(0.75, round(partial * 4) / 4))
-    return hearts, gold_any, gold_full
+    return hearts, gold_any, gold_full + gold_part
 
 
 def read_star(img, name_top, name_bottom):
@@ -314,7 +322,7 @@ def parse_card(run, rec):
 
     return {"n": n, "name": base, "origin": origin,
             "color": color or "", "decor": decor or "", "fav": int(fav), "hearts": hearts,
-            "gold": int(gold), "gold_hearts": gold_full, "steps": steps if steps is not None else "", "spot": spot,
+            "gold": int(gold), "gold_hearts": f"{gold_full:g}", "steps": steps if steps is not None else "", "spot": spot,
             "spot_decor": spot_decor, "location": location, "date": date or "",
             "group": int(group), "problems": "; ".join(problems)}
 

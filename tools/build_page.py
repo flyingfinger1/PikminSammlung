@@ -135,6 +135,12 @@ def seeds():
     return {"scan": scans[-1].parent.name[:10], "list": out}
 
 
+def gold_hearts(row):
+    """Gold hearts: the completed ones plus the fraction of the one in progress."""
+    value = float(row.get("goldhearts") or 0)
+    return int(value) if value.is_integer() else value
+
+
 def parse(row):
     name = row["name"]
     m = DECOR_NAME.match(name)
@@ -165,7 +171,7 @@ def parse(row):
         "fav": row["fav"] == "1",
         "hearts": float(hearts.replace("+G", "")),
         "gold": hearts.endswith("+G"),
-        "goldHearts": int(row.get("goldhearts") or 0),  # completed gold hearts (mushroom attack power)
+        "goldHearts": gold_hearts(row),  # gold hearts, the one in progress as a fraction
         "steps": int(row["steps"]),
         "location": row["location"],
         "date": row["date"],
