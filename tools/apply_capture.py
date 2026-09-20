@@ -14,6 +14,7 @@ import json
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
@@ -22,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from capture_adb import SCROLLED_Y  # noqa: E402
 from lang import LANGS  # noqa: E402
 from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
-from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
+from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, no, sim  # noqa: E402
 from rare import review as review_rare  # noqa: E402
 
 from paths import ROOT  # noqa: E402
@@ -137,16 +138,24 @@ def main():
     print(tr(f"{len(match)} aktualisiert, {len(added)} neu, {len(source)} Porträts neu geschnitten",
              f"{len(match)} updated, {len(added)} new, {len(source)} portraits recut"))
     for n in skipped:
-        print(tr(f"  übersprungen, Datum/Farbe nicht lesbar: #{n['n']} {show_name(n['name'])} - Einzelkarte neu aufnehmen",
-                 f"  skipped, date/type unreadable: #{n['n']} {show_name(n['name'])} - re-take the single card"))
+        print(tr(f"  übersprungen, Datum/Farbe nicht lesbar: Karte {n['n']} {show_name(n['name'])}"
+                 " - Einzelkarte neu aufnehmen",
+                 f"  skipped, date/type unreadable: card {n['n']} {show_name(n['name'])}"
+                 " - re-take the single card"))
     for r in added:
-        print(f"  [{r['frame']}] {show_name(r['name'])} · {show_spot(r['spot'])} · {show_loc(r['location'])} · {r['date']}")
+        print(f"  {no(r)} {show_name(r['name'])} · {show_spot(r['spot'])} · {show_loc(r['location'])} · {r['date']}")
     if gone:
         what = tr("entfernt", "removed") if args.remove_missing else \
             tr("nicht im Scan, bleiben erhalten", "not in the scan, kept")
         print(f"{len(gone)} {what}:")
         for o in gone:
-            print(f"  [{o['frame']}] {show_name(o['name'])} · {show_loc(o['location'])} · {o['date']}")
+            print(f"  {no(o)} {show_name(o['name'])} · {show_loc(o['location'])} · {o['date']}")
+    # what the menu shows afterwards: this scan is in the herbarium now
+    (run / "applied.json").write_text(json.dumps(
+        {"when": datetime.now().isoformat(timespec="seconds"), "updated": len(match),
+         "added": [int(r["frame"]) for r in added], "skipped": len(skipped),
+         "removed": [int(o["frame"]) for o in gone] if args.remove_missing else [],
+         "collection": len(old_rows)}, ensure_ascii=False), encoding="utf-8")
 
     # the collection can prove that a rare set is unlocked, never that it is not
     review_rare(old_rows, interactive=bool(sys.stdin) and sys.stdin.isatty())

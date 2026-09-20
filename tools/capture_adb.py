@@ -400,8 +400,9 @@ def earlier_shot(card, others):
     return target
 
 
-def single(run_dir):
-    """Re-take only the open card (e.g. a popup covered it) and replace its earlier shot."""
+def single(run_dir, replace=None):
+    """Re-take only the open card (e.g. a popup covered it) and replace its earlier shot;
+    "replace" names that card outright (the menu knows it from the report)."""
     from parse_captures import parse_card  # local import: parse_captures imports this module
 
     ensure_device()
@@ -425,7 +426,7 @@ def single(run_dir):
         others = list(csv.DictReader(parsed.open(encoding="utf-8"), delimiter="\t"))
     else:
         others = [parse_card(run_dir, r) for r in recs if r["n"] != tmp]
-    target = earlier_shot(card, others)
+    target = replace or earlier_shot(card, others)
     n = target if target else max(r["n"] for r in recs) + 1
 
     for suffix in ("", "_b"):
@@ -452,6 +453,8 @@ def main():
     ap.add_argument("--resume", type=Path)
     ap.add_argument("--single", type=Path, help=tr("Laufordner: nur die offene Karte neu aufnehmen",
                                                    "run folder: re-take only the open card"))
+    ap.add_argument("--replace", type=int, help=tr("mit --single: genau diese Karte ersetzen",
+                                                   "with --single: replace exactly this card"))
     ap.add_argument("--seeds", action="store_true", help=tr("Keim-Liste statt Pikmin-Liste scannen",
                                                             "scan the seedling list instead of the Pikmin list"))
     args = ap.parse_args()
@@ -459,7 +462,7 @@ def main():
     # seedling scans live in captures/seeds/, apart from the Pikmin scans
     SEEDS = args.seeds or (args.resume is not None and args.resume.resolve().parent.name == "seeds")
     if args.single:
-        single(args.single)
+        single(args.single, args.replace)
     elif args.resume:
         done = sorted(args.resume.glob("[0-9][0-9][0-9].png"))
         run(args.resume, int(done[-1].stem) + 1 if done else 1)

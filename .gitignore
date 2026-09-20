@@ -4,6 +4,7 @@ work/
 data/
 web/index.html
 web/thumbs.jpg
+web/.published.json
 *.bak
 
 # secrets and settings of your own collection

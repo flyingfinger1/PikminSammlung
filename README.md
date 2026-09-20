@@ -50,11 +50,18 @@ Start **`PikminHerbarium.exe`**, or with Python double-click **`pikmin.bat`** (o
 | Option | What it does |
 |---|---|
 | 1 Full update | guided: scan → group → parse → re-take single cards → apply → publish |
-| 2–5 | scan, resume after an interruption, append the Pikmin of a group, re-take the open card |
+| 2–4 | scan, resume after an interruption, append the Pikmin of a group |
+| 5 | re-take a card: pick one from the last report (the menu says which Pikmin to open) or the one open on the phone |
 | 6 | parse the scan and compare it with the collection (review the report) |
-| 7 | apply (backup `data/pikmin.tsv.bak`) and build the page |
+| 7 | apply (backup `data/pikmin.tsv.bak`) and build the page; Pikmin missing from the scan are listed with their number before you decide whether to remove them |
 | 8 | publish `web/index.html` + `web/thumbs.jpg` to your server |
 | 11 | scan the seedling list (sorted by decor, first seedling open) and evaluate it for the page |
+
+Above the prompt the menu shows where things stand: Pikmin in the herbarium, the current scan with
+what the comparison found and whether it has been applied, when the page was built and published,
+and the last seedling scan. Two numbers appear in the reports: **no.** is the place in the
+herbarium – it never changes and is the one in a deep link – while **card** is only the position
+in the current scan.
 
 Before scanning: phone connected via USB, *Do not disturb* on, the Pikmin list **sorted by decor**
 (needed to tell the sticker motifs and park sets apart), the first Pikmin **outside** a group opened.

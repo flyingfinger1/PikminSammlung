@@ -8,7 +8,9 @@ Usage: py tools/diff_capture.py captures/<run>
 """
 import csv
 import difflib
+import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -123,15 +125,31 @@ def match_rows(new_rows, old_rows):
 HEARTS = tr("Herzen", "hearts")
 
 
+def no(o):
+    """A Pikmin in the herbarium: its number never changes and is the one in a deep link."""
+    return tr(f"Nr. {o['frame']}", f"no. {o['frame']}")
+
+
+def card(n):
+    """A card of this scan: its number is the position in the scan, nothing more."""
+    return tr(f"Karte {n['n']}", f"card {n['n']}")
+
+
+def where(r):
+    return f"{show_spot(r['spot'])} · {show_loc(r['location'])} · {r['date']}"
+
+
 def main():
     run = Path(sys.argv[1])
     new_rows, dropped = dedupe(load_new(run))
     old_rows = load_old()
+    print(tr("Nr. = Platz im Herbarium (bleibt gleich) · Karte = Position in diesem Scan",
+             "no. = place in the herbarium (never changes) · card = position in this scan"))
     if dropped:
         print(tr(f"Doppelt im Scan ({len(dropped)}), die ältere Aufnahme wird ignoriert:",
                  f"Twice in the scan ({len(dropped)}), the earlier capture is ignored:"))
         for earlier, later in dropped:
-            print(f"  #{earlier['n']} {show_name(earlier['name'])} = #{later['n']} {show_name(later['name'])}"
+            print(f"  {card(earlier)} {show_name(earlier['name'])} = {card(later)} {show_name(later['name'])}"
                   f" · {later['steps']} {tr('Schritte', 'steps')}")
     match = match_rows(new_rows, old_rows)
     used_new = set(match)
@@ -163,20 +181,46 @@ def main():
              f"Captured: {len(new_rows)} · herbarium: {len(old_rows)} · matched: {len(match)}"))
     print(tr(f"\nNeu ({len(new_only)}):", f"\nNew ({len(new_only)}):"))
     for n in new_only:
-        print(f"  #{n['n']} {show_name(n['name'])} · {show_spot(n['spot'])} · {show_loc(n['location'])} · {n['date']}")
+        print(f"  {card(n)} {show_name(n['name'])} · {where(n)}")
     print(tr(f"\nNicht mehr gefunden ({len(gone)}):", f"\nNot found any more ({len(gone)}):"))
     for o in gone:
-        print(f"  [{o['frame']}] {show_name(o['name'])} · {show_spot(o['spot'])} · {show_loc(o['location'])} · {o['date']}")
+        print(f"  {no(o)} {show_name(o['name'])} · {where(o)}")
     print(tr(f"\nUnsichere Zuordnungen ({len(weak)}):", f"\nUncertain matches ({len(weak)}):"))
     for n, o, s in weak:
-        print(f"  #{n['n']} {show_name(n['name'])} / {show_loc(n['location'])}  ⇄  "
-              f"[{o['frame']}] {show_name(o['name'])} / {show_loc(o['location'])}  (Score {s:.1f})")
+        print(f"  {card(n)} {show_name(n['name'])} / {show_loc(n['location'])}  ⇄  "
+              f"{no(o)} {show_name(o['name'])} / {show_loc(o['location'])}  (Score {s:.1f})")
     notable = [(n, o, d) for n, o, d in changes if any(not x.startswith(HEARTS) for x in d)]
     print(tr(f"\nÄnderungen außer Herzen/Schritten ({len(notable)}):",
              f"\nChanges besides hearts/steps ({len(notable)}):"))
     for n, o, d in notable:
-        print(f"  [{o['frame']}] #{n['n']}: " + " · ".join(d))
+        print(f"  {no(o)} ({card(n)}): " + " · ".join(d))
     print(tr(f"\nNur Herzen geändert: {len(changes) - len(notable)}", f"\nOnly hearts changed: {len(changes) - len(notable)}"))
+    write_report(run, new_rows, old_rows, match, dropped, new_only, gone, weak, notable)
+
+
+def write_report(run, new_rows, old_rows, match, dropped, new_only, gone, weak, notable):
+    """What the menu needs to talk about this scan without parsing the text above: which cards
+    are worth another look, and what applying it would change."""
+    from parse_captures import card_problems  # local: parse_captures pulls in the OCR side
+
+    def scan_card(n, **extra):
+        return {"card": int(n["n"]), "name": n["name"], "spot": n["spot"],
+                "location": n["location"], "date": n["date"], **extra}
+
+    report = {
+        "run": run.name,
+        "when": datetime.now().isoformat(timespec="seconds"),
+        "cards": len(new_rows), "collection": len(old_rows), "matched": len(match),
+        "new": [scan_card(n) for n in new_only],
+        "gone": [{"no": int(o["frame"]), "name": o["name"], "spot": o["spot"],
+                  "location": o["location"], "date": o["date"]} for o in gone],
+        "weak": [scan_card(n, no=int(o["frame"]), score=round(s, 1)) for n, o, s in weak],
+        "changes": [scan_card(n, no=int(o["frame"]), what=d) for n, o, d in notable],
+        "dropped": [scan_card(e, same_as=int(l["n"])) for e, l in dropped],
+        # only what is wrong with a card: an open set says nothing about the shot itself
+        "problems": [scan_card(n, problem=card_problems(n)) for n in new_rows if card_problems(n)],
+    }
+    (run / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":

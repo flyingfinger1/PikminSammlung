@@ -11,6 +11,7 @@ import ssl
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -85,6 +86,10 @@ def main():
                         f"{name}: checksum does not match - please publish again."))
         print(tr(f"  {name}: {len(data) / 1024:.0f} KB hochgeladen, Prüfsumme ok",
                  f"  {name}: {len(data) / 1024:.0f} KB uploaded, checksum ok"))
+    # the menu shows when the page last went online
+    (ROOT / "web/.published.json").write_text(json.dumps(
+        {"when": datetime.now().isoformat(timespec="seconds"), "url": url}, ensure_ascii=False),
+        encoding="utf-8")
     print(tr(f"Veröffentlicht: {url}", f"Published: {url}"))
 
 

@@ -327,6 +327,15 @@ MULTI_SETS = {
     ("plain", "Straße", "Sticker"): 3,  # sticker motif a Pikmin without decor will get
     ("plain", "Park", ""): 2,           # Kleeblatt, vierblättriges Kleeblatt
 }
+# "set open" says the list order did not reveal the set - a note about the scan, not about the
+# card, so re-taking that card changes nothing (both spellings: the message language can change)
+SET_NOTE = ("Set offen", "set open")
+
+
+def card_problems(row):
+    """What is wrong with the card itself; re-taking it can help. Without the set note."""
+    return "; ".join(p for p in (row.get("problems") or "").split("; ")
+                     if p and not p.startswith(SET_NOTE))
 
 
 def assign_variants(rows, unplaced=(), order=COLOR_ORDER):
@@ -360,8 +369,8 @@ def assign_variants(rows, unplaced=(), order=COLOR_ORDER):
             for r, b in members:
                 r["variant"] = b
         else:
-            note = tr(f"Set offen: {found} statt {MULTI_SETS[key]} Blöcke",
-                      f"set open: {found} instead of {MULTI_SETS[key]} blocks")
+            note = tr(SET_NOTE[0], SET_NOTE[1]) + tr(f": {found} statt {MULTI_SETS[key]} Blöcke",
+                                                     f": {found} instead of {MULTI_SETS[key]} blocks")
             for r, _ in members:
                 r["problems"] = "; ".join(filter(None, [r["problems"], note]))
 
@@ -379,11 +388,17 @@ def main():
         w = csv.DictWriter(f, fieldnames=rows[0].keys(), delimiter="\t", lineterminator="\n")
         w.writeheader()
         w.writerows(rows)
-    bad = [r for r in rows if r["problems"]]
+    bad = [r for r in rows if card_problems(r)]
+    open_sets = {r["n"] for r in rows if r["problems"]} - {r["n"] for r in bad}
     print(tr(f"{len(rows)} Karten -> {run / 'parsed.tsv'}, {len(bad)} mit Auffälligkeiten",
              f"{len(rows)} cards -> {run / 'parsed.tsv'}, {len(bad)} with remarks"))
     for r in bad:
-        print(f"  #{r['n']:03d} {show_name(r['name'])}: {r['problems']}")
+        print(tr(f"  Karte {r['n']:03d}", f"  card {r['n']:03d}") + f" {show_name(r['name'])}: {card_problems(r)}")
+    if open_sets:
+        print(tr(f"  {len(open_sets)} Karten mit offenem Set - nur ein Hinweis auf die Listen-Reihenfolge,"
+                 " kein Fehler an der Karte",
+                 f"  {len(open_sets)} cards with an open set - only a hint about the list order,"
+                 " nothing wrong with the card"))
 
 
 if __name__ == "__main__":

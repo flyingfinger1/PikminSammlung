@@ -5,14 +5,17 @@ Start: py tools/pikmin.py   (or double-click pikmin.bat in the project folder)
 Runs the single scripts one after another and remembers the scan folder used last
 (captures/.last_run), so it never has to be typed.
 """
+import csv
+import json
 import os
 import subprocess
 import sys
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 
 from paths import FROZEN, ROOT
-from ui import ask, tr
+from ui import ask, location as show_loc, name as show_name, spot as show_spot, tr
 
 TOOLS = ROOT / "tools"
 # the packaged app runs each step as a subcommand of itself (tools/app.py)
@@ -110,6 +113,95 @@ def card_count(run):
     return sum(1 for _ in log.open(encoding="utf-8")) if log.exists() else 0
 
 
+def read_json(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def when(value):
+    """A timestamp (ISO string or file) as "20.09. 15:12"."""
+    if isinstance(value, Path):
+        value = datetime.fromtimestamp(value.stat().st_mtime) if value.exists() else None
+    elif value:
+        value = datetime.fromisoformat(value)
+    return value.strftime("%d.%m. %H:%M") if value else None
+
+
+def report_of(run):
+    """The report of the last comparison - only as long as it still describes this parsed.tsv."""
+    report, parsed = read_json(run / "report.json"), run / "parsed.tsv"
+    if not report or not parsed.exists():
+        return None
+    return report if (run / "report.json").stat().st_mtime >= parsed.stat().st_mtime else None
+
+
+def collection():
+    tsv = ROOT / "data/pikmin.tsv"
+    if not tsv.exists():
+        return 0, None
+    with tsv.open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f, delimiter="\t"))
+    return len(rows), max((r.get("seen") or "" for r in rows), default=None)
+
+
+def seed_state():
+    runs = seed_runs()
+    if not runs:
+        return None
+    parsed = runs[-1] / "parsed.tsv"
+    count = sum(1 for _ in parsed.open(encoding="utf-8")) - 1 if parsed.exists() else None
+    return runs[-1].name[:10], count
+
+
+def status():
+    """What is in the collection, in the current scan and on the page - the menu shows it above
+    every choice, so nothing has to be remembered between steps."""
+    count, seen = collection()
+    print(tr(f"\nHerbarium: {count} Pikmin" + (f" · zuletzt gescannt {seen}" if seen else ""),
+             f"\nHerbarium: {count} Pikmin" + (f" · last scanned {seen}" if seen else "")))
+
+    run = current_run()
+    if run is None:
+        print(tr("Scan: noch keiner vorhanden", "Scan: none yet"))
+    else:
+        parts = [f"{card_count(run)} " + tr("Karten", "cards")]
+        report = report_of(run)
+        if not (run / "parsed.tsv").exists():
+            parts.append(tr("noch nicht ausgewertet", "not evaluated yet"))
+        elif not report:
+            parts.append(tr("Auswertung veraltet - 6", "evaluation out of date - 6"))
+        else:
+            parts.append(tr(f"{report['matched']} zugeordnet", f"{report['matched']} matched"))
+            for count_, label in ((len(report["new"]), tr("neu", "new")),
+                                  (len(report["gone"]), tr("nicht gefunden", "not found")),
+                                  (len(report["weak"]) + len(report["problems"]),
+                                   tr("zum Prüfen", "worth a look"))):
+                if count_:
+                    parts.append(f"{count_} {label}")
+        applied = read_json(run / "applied.json")
+        if applied:
+            parts.append(tr(f"übernommen {when(applied['when'])}", f"applied {when(applied['when'])}"))
+        elif seen and seen == run.name[:10]:  # applied before this mark existed, on the scan day
+            parts.append(tr(f"übernommen am {seen}", f"applied on {seen}"))
+        else:
+            parts.append(tr("noch nicht übernommen", "not applied yet"))
+        print(f"Scan {run.name}: " + " · ".join(parts))
+
+    index, published = ROOT / "web/index.html", read_json(ROOT / "web/.published.json")
+    if index.exists():
+        line = tr(f"Seite: gebaut {when(index)}", f"Page: built {when(index)}")
+        if published:  # without the mark nothing is known: it may have gone online by other means
+            online = datetime.fromisoformat(published["when"]).timestamp() >= index.stat().st_mtime
+            line += tr(f" · veröffentlicht {when(published['when'])}", f" · published {when(published['when'])}") \
+                if online else tr(" · seit dem Bauen nicht veröffentlicht", " · not published since it was built")
+        print(line)
+    seeds = seed_state()
+    if seeds:
+        print(tr(f"Keime: {seeds[1]} vom {seeds[0]}", f"Seedlings: {seeds[1]} from {seeds[0]}"))
+
+
 # ---------- steps ----------
 
 def step_scan():
@@ -148,12 +240,48 @@ def step_group(run):
     step_resume_until_done(run)
 
 
+def worth_a_look(report):
+    """Cards of this scan that may need a second shot, with the reason."""
+    if not report:
+        return []
+    out = {}
+    for c in report["problems"]:
+        out.setdefault(c["card"], (c, c["problem"]))
+    for c in report["weak"]:
+        out[c["card"]] = (c, tr(f"unsichere Zuordnung zu Nr. {c['no']}", f"uncertain match to no. {c['no']}"))
+    for c in report["changes"]:
+        if any(w.startswith(("SCHRITTE", "STEPS")) for w in c["what"]):
+            out[c["card"]] = (c, " · ".join(c["what"]))
+    for c in report["new"]:
+        out.setdefault(c["card"], (c, tr("neu im Herbarium", "new to the herbarium")))
+    return [out[k] for k in sorted(out)]
+
+
 def step_single(run):
     headline(tr("Einzelkarte neu aufnehmen", "Re-take a single card"))
-    print(tr("Öffne das Pikmin, dessen Karte oder Porträt gestört war (Popup schließen).",
-             "Open the Pikmin whose card or portrait was covered (close the popup)."))
+    picks = worth_a_look(report_of(run))
+    target = None
+    if picks:
+        print(tr("Karten aus dem letzten Bericht, die einen zweiten Blick wert sind:",
+                 "Cards from the last report that are worth a second look:"))
+        for i, (c, why) in enumerate(picks[:9], start=1):
+            print(f"  {i}) " + tr(f"Karte {c['card']}", f"card {c['card']}") + f" {show_name(c['name'])}"
+                  f" · {show_spot(c['spot'])} · {show_loc(c['location'])} · {c['date']}\n     {why}")
+        choice = input(tr("Nummer (Enter = die Karte, die gerade am Handy offen ist): ",
+                          "Number (Enter = the card that is open on the phone now): ")).strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(picks[:9]):
+            target = picks[int(choice) - 1][0]
+    if target:
+        print(tr(f"\nÖffne im Spiel: {show_name(target['name'])} · {show_spot(target['spot'])}"
+                 f" · {show_loc(target['location'])} · {target['date']}",
+                 f"\nOpen in the game: {show_name(target['name'])} · {show_spot(target['spot'])}"
+                 f" · {show_loc(target['location'])} · {target['date']}"))
+    else:
+        print(tr("\nÖffne das Pikmin, dessen Karte oder Porträt gestört war (Popup schließen).",
+                 "\nOpen the Pikmin whose card or portrait was covered (close the popup)."))
     wait(tr("Wenn geöffnet: Enter ...", "When it is open: press Enter ..."))
-    run_script("capture_adb.py", "--single", run)
+    extra = ["--replace", str(target["card"])] if target else []
+    run_script("capture_adb.py", "--single", run, *extra)
 
 
 def step_review(run):
@@ -172,13 +300,30 @@ def step_apply(run):
     if not (run / "parsed.tsv").exists():
         print(tr("Erst auswerten.", "Evaluate first."))
         return False
+    report = report_of(run)
+    if report is None:
+        print(tr("Der Bericht passt nicht mehr zum Scan - erst Punkt 6 (auswerten).",
+                 "The report does not match the scan any more - run step 6 (evaluate) first."))
+        return False
+    print(tr(f"Der Bericht meldet: {report['matched']} zugeordnet, {len(report['new'])} neu, "
+             f"{len(report['gone'])} nicht mehr gefunden",
+             f"The report says: {report['matched']} matched, {len(report['new'])} new, "
+             f"{len(report['gone'])} not found any more"))
     if not ask(tr("Bericht geprüft - ins Herbarium übernehmen? (Sicherung: data/pikmin.tsv.bak)",
                   "Report checked - apply it to the herbarium? (backup: data/pikmin.tsv.bak)"), default=False):
         return False
-    remove = ask(tr("Pikmin, die der Bericht als 'Nicht mehr gefunden' zeigt, entfernen? "
-                    "(nur wenn du sie freigelassen hast oder es Doppelte sind)",
-                    "Remove the Pikmin the report lists as 'Not found any more'? "
-                    "(only if you released them or they are duplicates)"), default=False)
+    remove = False
+    if report["gone"]:
+        # only worth asking when something really is missing - and only with the Pikmin in view
+        print(tr(f"\nDiese {len(report['gone'])} Pikmin kommen im Scan nicht vor:",
+                 f"\nThese {len(report['gone'])} Pikmin are not in the scan:"))
+        for g in report["gone"]:
+            print(tr(f"  Nr. {g['no']}", f"  no. {g['no']}") + f" {show_name(g['name'])}"
+                  f" · {show_spot(g['spot'])} · {show_loc(g['location'])} · {g['date']}")
+        remove = ask(tr("Aus dem Herbarium entfernen? (nur wenn du sie freigelassen hast oder es "
+                        "Doppelte sind - sonst bleiben sie erhalten)",
+                        "Remove them from the herbarium? (only if you released them or they are "
+                        "duplicates - otherwise they stay)"), default=False)
     extra = ["--remove-missing"] if remove else []
     if run_script("apply_capture.py", run, *extra) and run_script("build_page.py"):
         print(tr("\nFertig gebaut.", "\nBuilt."))
@@ -293,10 +438,9 @@ Pikmin Herbarium
 
 def main():
     while True:
-        run = current_run()
         print(MENU)
-        print(tr("  Aktueller Scan: ", "  Current scan: ")
-              + (f"{run.name} ({card_count(run)} {tr('Karten', 'cards')})" if run else "-"))
+        status()
+        run = current_run()
         choice = input(tr("Auswahl: ", "Choice: ")).strip()
         try:
             if choice == "1":
