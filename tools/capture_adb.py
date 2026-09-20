@@ -426,6 +426,9 @@ def single(run_dir, replace=None):
         others = list(csv.DictReader(parsed.open(encoding="utf-8"), delimiter="\t"))
     else:
         others = [parse_card(run_dir, r) for r in recs if r["n"] != tmp]
+    if replace and not any(r["n"] == replace for r in recs):
+        sys.exit(tr(f"Karte {replace} gibt es in {run_dir.name} nicht.",
+                    f"There is no card {replace} in {run_dir.name}."))
     target = replace or earlier_shot(card, others)
     n = target if target else max(r["n"] for r in recs) + 1
 
@@ -444,7 +447,8 @@ def single(run_dir, replace=None):
         for r in recs:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     what = tr("ersetzt", "replaced") if target else tr("neu angehängt", "appended")
-    print(f"#{n:03d} {name(card['name'])} ({card['steps']} {tr('Schritte', 'steps')}, {card['date']}) {what}")
+    print(tr(f"Karte {n:03d}", f"card {n:03d}")
+          + f" {name(card['name'])} ({card['steps']} {tr('Schritte', 'steps')}, {card['date']}) {what}")
 
 
 def main():
