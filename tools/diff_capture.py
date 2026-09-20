@@ -68,9 +68,26 @@ def load_new(run):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
+def same_pikmin(earlier, later):
+    """Two captures of one Pikmin, "later" taken after "earlier": same type, discovery day and
+    place, steps unchanged or a little higher - twins found on one day differ exactly there. The
+    name may change in between: a Pikmin that reaches level 4 gets the decor of its place, so
+    "Fels-Pikmin" becomes "Kochmützen-Pikmin (Fels)"."""
+    if (earlier["color"], earlier["date"], earlier["spot"]) != (later["color"], later["date"], later["spot"]):
+        return False
+    if not 0 <= int(later["steps"] or 0) - int(earlier["steps"] or 0) <= 5000:
+        return False
+    if earlier["name"] != later["name"] and not (not earlier["decor"] and later["decor"]
+                                                 and later["decor"] == later["spot_decor"]):
+        return False
+    coords = is_coords(earlier["location"]) or is_coords(later["location"])  # street names load late
+    return coords or sim(earlier["location"], later["location"]) >= 0.8
+
+
 def dedupe(rows):
-    """One Pikmin captured twice - at the end of the list, or it changed while scanning (e.g. got
-    its decor): same colour, discovery date, spot and step count. Keep the later capture, it is
+    """One Pikmin captured twice - at the end of the list, or it changed while scanning: same
+    colour, discovery date, spot and step count. A Pikmin that got its decor in between shows a
+    new name and more steps, so those are matched by same_pikmin(). Keep the later capture, it is
     the current state. Step count 0 is not unique enough (fresh Pikmin), those are kept."""
     kept, dropped, first = [], [], {}
     for r in sorted(rows, key=lambda r: int(r["n"])):
@@ -82,6 +99,12 @@ def dedupe(rows):
         if key:
             first[key] = r
         kept.append(r)
+    for later in [r for r in kept if r["decor"]]:
+        # the decor arrived between the two captures - only when exactly one card can be meant
+        earlier = [e for e in kept if not e["decor"] and same_pikmin(e, later)]
+        if len(earlier) == 1:
+            kept.remove(earlier[0])
+            dropped.append((earlier[0], later))
     return kept, dropped
 
 

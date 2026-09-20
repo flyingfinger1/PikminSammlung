@@ -384,18 +384,17 @@ def _run(out_dir, start_n, test=False):
 
 
 def earlier_shot(card, others):
-    """The earlier shot of the same Pikmin: same name, colour, day and place (twins from one day
-    differ only there), steps the same or a little more. None = a card not in the run yet."""
-    from diff_capture import is_coords, sim
+    """The earlier shot of the same Pikmin (see diff_capture.same_pikmin, which also catches a
+    Pikmin that got its decor in between): the best match wins, the one from the same place with
+    the fewest extra steps. None = a card not in the run yet."""
+    from diff_capture import is_coords, same_pikmin, sim
     target, best = None, None
     for other in others:
-        gain = int(card["steps"] or 0) - int(other["steps"] or 0)
-        if (other["date"], other["color"], other["name"]) != (card["date"], card["color"], card["name"])                 or not 0 <= gain <= 5000:
+        if not same_pikmin(other, card):
             continue
+        gain = int(card["steps"] or 0) - int(other["steps"] or 0)
         coords = is_coords(other["location"]) or is_coords(card["location"])  # names load late
         place = 0.5 if coords else sim(other["location"], card["location"])
-        if place < 0.8 and not coords:
-            continue
         if best is None or (place, -gain) > best:
             target, best = int(other["n"]), (place, -gain)
     return target
