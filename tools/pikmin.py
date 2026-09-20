@@ -257,20 +257,39 @@ def worth_a_look(report):
     return [out[k] for k in sorted(out)]
 
 
+def scan_card(run, number):
+    """One card of the scan by its number, as the report writes it."""
+    parsed = run / "parsed.tsv"
+    if not parsed.exists():
+        return None
+    with parsed.open(encoding="utf-8") as f:
+        for r in csv.DictReader(f, delimiter="\t"):
+            if int(r["n"]) == number:
+                return {"card": number, "name": r["name"], "spot": r["spot"],
+                        "location": r["location"], "date": r["date"]}
+    return None
+
+
 def step_single(run):
     headline(tr("Einzelkarte neu aufnehmen", "Re-take a single card"))
     picks = worth_a_look(report_of(run))
-    target = None
+    cards = card_count(run)
     if picks:
         print(tr("Karten aus dem letzten Bericht, die einen zweiten Blick wert sind:",
                  "Cards from the last report that are worth a second look:"))
-        for i, (c, why) in enumerate(picks[:9], start=1):
-            print(f"  {i}) " + tr(f"Karte {c['card']}", f"card {c['card']}") + f" {show_name(c['name'])}"
+        for c, why in picks[:9]:
+            print("  " + tr(f"Karte {c['card']}", f"card {c['card']}") + f" {show_name(c['name'])}"
                   f" · {show_spot(c['spot'])} · {show_loc(c['location'])} · {c['date']}\n     {why}")
-        choice = input(tr("Nummer (Enter = die Karte, die gerade am Handy offen ist): ",
-                          "Number (Enter = the card that is open on the phone now): ")).strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(picks[:9]):
-            target = picks[int(choice) - 1][0]
+    else:
+        print(tr("Der letzte Bericht meldet keine Karte, die neu aufgenommen werden müsste.",
+                 "The last report lists no card that needs another shot."))
+    choice = input(tr(f"Kartennummer 1-{cards} (Enter = die Karte, die gerade am Handy offen ist): ",
+                      f"Card number 1-{cards} (Enter = the card that is open on the phone now): ")).strip()
+    target = scan_card(run, int(choice)) if choice.isdigit() else None
+    if choice.isdigit() and not target:
+        print(tr(f"Karte {choice} gibt es in diesem Scan nicht.",
+                 f"There is no card {choice} in this scan."))
+        return
     if target:
         print(tr(f"\nÖffne im Spiel: {show_name(target['name'])} · {show_spot(target['spot'])}"
                  f" · {show_loc(target['location'])} · {target['date']}",

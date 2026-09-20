@@ -51,7 +51,7 @@ Start **`PikminHerbarium.exe`**, or with Python double-click **`pikmin.bat`** (o
 |---|---|
 | 1 Full update | guided: scan → group → parse → re-take single cards → apply → publish |
 | 2–4 | scan, resume after an interruption, append the Pikmin of a group |
-| 5 | re-take a card: pick one from the last report (the menu says which Pikmin to open) or the one open on the phone |
+| 5 | re-take a card: type its number (the last report suggests the ones worth a second look) and the menu says which Pikmin to open, or press Enter for the one open on the phone |
 | 6 | parse the scan and compare it with the collection (review the report) |
 | 7 | apply (backup `data/pikmin.tsv.bak`) and build the page; Pikmin missing from the scan are listed with their number before you decide whether to remove them |
 | 8 | publish `web/index.html` + `web/thumbs.jpg` to your server |
