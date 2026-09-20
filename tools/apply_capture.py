@@ -23,6 +23,7 @@ from capture_adb import SCROLLED_Y  # noqa: E402
 from lang import LANGS  # noqa: E402
 from ui import location as show_loc, name as show_name, spot as show_spot, tr  # noqa: E402
 from diff_capture import dedupe, is_coords, load_new, load_old, match_rows, sim  # noqa: E402
+from rare import review as review_rare  # noqa: E402
 
 from paths import ROOT  # noqa: E402
 CROP = (0.13, 0.10, 0.87, 0.385)   # same framing as make_thumbs.py
@@ -146,6 +147,9 @@ def main():
         print(f"{len(gone)} {what}:")
         for o in gone:
             print(f"  [{o['frame']}] {show_name(o['name'])} · {show_loc(o['location'])} · {o['date']}")
+
+    # the collection can prove that a rare set is unlocked, never that it is not
+    review_rare(old_rows, interactive=bool(sys.stdin) and sys.stdin.isatty())
 
 
 if __name__ == "__main__":

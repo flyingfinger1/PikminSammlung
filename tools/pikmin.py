@@ -12,7 +12,7 @@ import webbrowser
 from pathlib import Path
 
 from paths import FROZEN, ROOT
-from ui import tr
+from ui import ask, tr
 
 TOOLS = ROOT / "tools"
 # the packaged app runs each step as a subcommand of itself (tools/app.py)
@@ -66,18 +66,6 @@ def run_script(script, *args):
     step = [COMMANDS[script]] if FROZEN else [str(TOOLS / script)]
     result = subprocess.run([sys.executable, *step, *map(str, args)], cwd=ROOT, env=ENV)
     return result.returncode == 0
-
-
-def ask(prompt, default=True):
-    hint = tr("J/n", "Y/n") if default else tr("j/N", "y/N")
-    while True:
-        answer = input(f"{prompt} [{hint}] ").strip().lower()
-        if not answer:
-            return default
-        if answer in ("j", "ja", "y", "yes"):
-            return True
-        if answer in ("n", "nein", "no"):
-            return False
 
 
 def wait(message=None):

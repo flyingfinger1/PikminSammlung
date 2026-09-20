@@ -80,3 +80,16 @@ def location(text):
     if UI == "de" or not text:
         return text
     return "near " + text[len("In der Nähe: "):] if text.startswith("In der Nähe: ") else text
+
+
+def ask(prompt, default=True):
+    """Yes/no question in the message language; Enter takes the default."""
+    hint = tr("J/n", "Y/n") if default else tr("j/N", "y/N")
+    while True:
+        answer = input(f"{prompt} [{hint}] ").strip().lower()
+        if not answer:
+            return default
+        if answer in ("j", "ja", "y", "yes"):
+            return True
+        if answer in ("n", "nein", "no"):
+            return False
