@@ -283,8 +283,10 @@ def step_single(run):
     else:
         print(tr("Der letzte Bericht meldet keine Karte, die neu aufgenommen werden müsste.",
                  "The last report lists no card that needs another shot."))
-    choice = input(tr(f"Kartennummer 1-{cards} (Enter = die Karte, die gerade am Handy offen ist): ",
-                      f"Card number 1-{cards} (Enter = the card that is open on the phone now): ")).strip()
+    choice = input(tr(f"Kartennummer 1-{cards} (0 = abbrechen, Enter = die Karte, die gerade offen ist): ",
+                      f"Card number 1-{cards} (0 = cancel, Enter = the card that is open now): ")).strip()
+    if choice == "0":
+        return
     target = scan_card(run, int(choice)) if choice.isdigit() else None
     if choice.isdigit() and not target:
         print(tr(f"Karte {choice} gibt es in diesem Scan nicht.",
@@ -424,7 +426,7 @@ def choose_run():
     for i, r in enumerate(runs[-9:], start=1):
         mark = tr(" <- aktuell", " <- current") if r == current_run() else ""
         print(f"  {i}) {r.name}  ({card_count(r)} {tr('Karten', 'cards')}){mark}")
-    choice = input(tr("Nummer (Enter = abbrechen): ", "Number (Enter = cancel): ")).strip()
+    choice = input(tr("Nummer (0 oder Enter = abbrechen): ", "Number (0 or Enter = cancel): ")).strip()
     if choice.isdigit() and 1 <= int(choice) <= len(runs[-9:]):
         remember(runs[-9:][int(choice) - 1])
 
